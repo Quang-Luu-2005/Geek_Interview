@@ -1,0 +1,191 @@
+# ============================================================
+# Secrets and local configuration
+# ============================================================
+.env
+.env.*
+!.env.example
+!.env.test.example
+!.env.*.example
+
+*.secret
+*.secrets
+secrets/
+credentials/
+**/credentials.json
+**/service-account*.json
+**/*credentials*.json
+
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+
+# Local API-client state may contain tokens or personal values.
+postman/*local*
+postman/*private*
+postman/*secret*
+postman/*.backup.json
+
+# ============================================================
+# Dependencies and package-manager caches
+# ============================================================
+node_modules/
+.pnpm-store/
+.yarn/
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/sdks/
+!.yarn/versions/
+.npm/
+
+vendor/
+.gradle/
+.m2/
+packages/
+
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ============================================================
+# Build, generated output and caches
+# ============================================================
+dist/
+build/
+out/
+target/
+bin/
+obj/
+.next/
+.nuxt/
+.nest/
+.turbo/
+.cache/
+.parcel-cache/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Generated API clients and documentation output.
+generated/
+docs/generated/
+
+# ============================================================
+# Logs, runtime state and process files
+# ============================================================
+*.log
+logs/
+*.pid
+*.pid.lock
+*.seed
+*.retry
+pids/
+
+# ============================================================
+# Databases, dumps, volumes and queues
+# ============================================================
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.sql.zip
+pgdata/
+postgres-data/
+docker-data/
+volumes/
+
+# Keep versioned migration SQL files; ignore only exported dumps.
+database/dumps/
+database/backups/
+
+# ============================================================
+# Test, concurrency and load-test raw artifacts
+# ============================================================
+test-results/**/*
+!test-results/**/.gitkeep
+!test-results/**/README.md
+
+junit.xml
+*.lcov
+*.prof
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
+k6-results/
+artillery-results/
+
+# ============================================================
+# Temporary and large local artifacts
+# ============================================================
+tmp/
+temp/
+.tmp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*.orig
+
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+*.iso
+
+# Assessment/reference PDFs are local inputs, not public source files.
+*.pdf
+
+# ============================================================
+# Local Docker overrides
+# ============================================================
+compose.override.yaml
+compose.override.yml
+docker-compose.override.yaml
+docker-compose.override.yml
+
+# ============================================================
+# IDE, editor and operating-system files
+# ============================================================
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================================
+# Tool-specific local state
+# ============================================================
+.eslintcache
+.stylelintcache
+.terraform/
+*.tfstate
+*.tfstate.*
+.serverless/
+.aws-sam/
+
