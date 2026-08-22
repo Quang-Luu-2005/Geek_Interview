@@ -1,0 +1,38 @@
+\section{Failure Scenario}
+A booking can be committed successfully while the HTTP response is lost. The client then retries because it cannot know whether the original request succeeded. Without idempotency, the retry may reserve inventory again and create a second booking.
+
+\section{API Contract}
+\begin{lstlisting}[language=HTTP,caption={Idempotent booking request}]
+POST /bookings HTTP/1.1
+Idempotency-Key: 44a3b9d0-...
+Content-Type: application/json
+
+{
+  "concertId": 1,
+  "items": [
+    { "ticketCategoryId": 10, "quantity": 2 }
+  ],
+  "voucherCode": "FLASH20"
+}
+\end{lstlisting}
+
+\section{Database Enforcement}
+The idempotency key is scoped by authenticated user and protected by a unique constraint. The record stores a canonical request fingerprint and enough result data to identify/replay the completed logical booking.
+
+\section{Request Fingerprint}
+The canonical request can include user ID, concert ID, sorted ticket items, quantities, and normalized voucher code. A cryptographic hash (for example, SHA-256) is stored with the key.
+
+\begin{table}[H]
+\centering
+\caption{Idempotency behavior}
+\begin{tabularx}{\textwidth}{p{0.30\textwidth}Y}
+\toprule
+\textbf{Situation} & \textbf{Behavior} \\
+\midrule
+New key & Process the booking and persist logical result \\
+Same key + same fingerprint & Return the original logical booking/result \\
+Same key + different fingerprint & Reject with an idempotency conflict \\
+Concurrent requests with same key & Exactly one request claims the logical operation; others replay/wait/reload according to implementation policy \\
+\bottomrule
+\end{tabularx}
+\end{table}

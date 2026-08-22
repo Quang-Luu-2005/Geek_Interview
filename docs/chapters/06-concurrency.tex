@@ -1,0 +1,33 @@
+\section{Why Check-Then-Update Is Unsafe}
+A sequence that first reads \code{available\_quantity} and later updates it can oversell because concurrent transactions may observe the same pre-update value.
+
+\section{Atomic Conditional Inventory Update}
+\begin{lstlisting}[language=SQL,caption={Atomic inventory reservation}]
+UPDATE ticket_inventories
+SET available_quantity = available_quantity - :quantity
+WHERE ticket_category_id = :ticket_category_id
+  AND available_quantity >= :quantity
+RETURNING available_quantity;
+\end{lstlisting}
+
+A returned row means the reservation succeeded. No returned row means there was insufficient inventory. The correctness decision is made by PostgreSQL rather than by a stale application read.
+
+\section{Concurrency Strategy}
+\begin{table}[H]
+\centering
+\caption{Concurrency hazards and controls}
+\begin{tabularx}{\textwidth}{p{0.28\textwidth}Y}
+\toprule
+\textbf{Hazard} & \textbf{Control} \\
+\midrule
+Two customers compete for final ticket & Atomic conditional update \\
+Booking contains multiple categories & Deterministic category order + one DB transaction \\
+Voucher and inventory have different outcomes & Same transaction; any failure rolls back both \\
+Admin/worker changes stale booking state & Conditional status update based on current state \\
+Multiple expiry workers & Row claim with \code{FOR UPDATE SKIP LOCKED} (optional plus point) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Expected Correctness Evidence}
+A representative concurrency test seeds 10 available tickets and launches 100 simultaneous booking attempts. The expected result is exactly 10 successful bookings, 90 controlled sold-out responses, and final inventory of zero---never a negative value.

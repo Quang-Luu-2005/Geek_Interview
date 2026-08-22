@@ -1,0 +1,58 @@
+\section{Scope Strategy}
+The assessment explicitly allows candidates to define feature scope and assumptions, and it does not require a production-ready system \cite{geekup-assessment}. The implementation therefore prioritizes customer booking correctness, operational booking handling, API documentation, local reproducibility, and evidence-driven testing.
+
+\section{Assumptions}
+\begin{longtable}{p{0.13\textwidth}p{0.35\textwidth}p{0.44\textwidth}}
+\caption{Key assumptions}\label{tab:assumptions}\\
+\toprule
+\textbf{ID} & \textbf{Assumption} & \textbf{Reason / Consequence} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Assumption} & \textbf{Reason / Consequence} \\
+\midrule
+\endhead
+A-01 & No seat-level selection & Tickets are capacity-based by category (VIP, Standard, etc.). \\
+A-02 & Reservation TTL is 10 minutes & Prevents abandoned bookings from holding resources indefinitely. \\
+A-03 & Payment gateway is out of scope & Confirmation is simulated or performed by an operation workflow. \\
+A-04 & One voucher use per user unless configured otherwise & Simplifies anti-abuse policy and is enforced by a unique constraint. \\
+A-05 & Only published concerts are bookable & Prevents booking unpublished inventory. \\
+A-06 & Historical booking amount is immutable & Booking items store price snapshots rather than joining to current prices. \\
+\bottomrule
+\end{longtable}
+
+\section{Business Invariants}
+\begin{invariantbox}[INV-01 --- Inventory safety]
+For every ticket category, \code{available\_quantity >= 0} must always hold.
+\end{invariantbox}
+
+\begin{invariantbox}[INV-02 --- Exactly-once logical reservation]
+One logical booking intent consumes ticket inventory at most once, even when the client retries.
+\end{invariantbox}
+
+\begin{invariantbox}[INV-03 --- Voucher quota safety]
+Voucher redemption must never exceed the configured global quota or per-user usage policy.
+\end{invariantbox}
+
+\begin{invariantbox}[INV-04 --- Atomic booking creation]
+Ticket reservation, voucher reservation, price calculation, booking persistence, and booking-item persistence either all commit or all roll back.
+\end{invariantbox}
+
+\begin{invariantbox}[INV-05 --- Lifecycle consistency]
+Expired or cancelled reservations must release reserved resources exactly once, and invalid state transitions must be rejected.
+\end{invariantbox}
+
+\begin{invariantbox}[INV-06 --- Historical price integrity]
+Changing ticket or voucher configuration after booking creation must not alter historical booking totals.
+\end{invariantbox}
+
+\section{Non-Goals for the Assessment}
+\begin{itemize}[nosep,leftmargin=*]
+  \footnotesize
+  \item real payment and refund settlement;
+  \item seat-map / exact-seat selection;
+  \item multi-region active-active deployment;
+  \item full microservice decomposition;
+  \item mandatory Kafka or Kubernetes;
+  \item real-time WebSocket availability.
+\end{itemize}

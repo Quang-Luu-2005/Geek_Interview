@@ -1,0 +1,67 @@
+\section{Architecture Overview}
+\begin{decisionbox}[Use a modular monolith for the assessment]
+A modular monolith keeps the critical booking operation inside one transactional consistency boundary while preserving clear domain/module separation. The API layer remains stateless and can be replicated horizontally if needed.
+\end{decisionbox}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=1.0cm and 1.1cm,
+  box/.style={draw=Primary, rounded corners, minimum width=3.1cm, minimum height=0.85cm, align=center, fill=SoftBlue},
+  module/.style={draw=Secondary, rounded corners, minimum width=2.7cm, minimum height=0.75cm, align=center, fill=SoftGreen},
+  data/.style={draw=Accent, cylinder, shape border rotate=90, aspect=0.25, minimum height=1.2cm, minimum width=2.8cm, align=center, fill=SoftGray},
+  arrow/.style={-{Latex[length=2.2mm]}, thick, draw=Primary}
+]
+\node[box] (client) {Customer / Operator};
+\node[box, below=of client] (api) {REST API\\Modular Monolith};
+\node[module, below left=of api] (concert) {Concert};
+\node[module, below=of api] (booking) {Booking};
+\node[module, below right=of api] (operation) {Operation};
+\node[module, below left=of booking] (inventory) {Inventory};
+\node[module, below=of booking] (voucher) {Voucher};
+\node[module, below right=of booking] (idem) {Idempotency};
+\node[data, below=1.2cm of voucher] (db) {PostgreSQL};
+\node[box, right=1.6cm of db] (worker) {Expiry Worker};
+
+\draw[arrow] (client) -- (api);
+\draw[arrow] (api) -- (concert);
+\draw[arrow] (api) -- (booking);
+\draw[arrow] (api) -- (operation);
+\draw[arrow] (booking) -- (inventory);
+\draw[arrow] (booking) -- (voucher);
+\draw[arrow] (booking) -- (idem);
+\draw[arrow] (concert) -- (db);
+\draw[arrow] (inventory) -- (db);
+\draw[arrow] (voucher) -- (db);
+\draw[arrow] (idem) -- (db);
+\draw[arrow] (operation) -- (db);
+\draw[arrow] (worker) -- (db);
+\end{tikzpicture}
+\caption{Current assessment architecture}
+\label{fig:architecture}
+\end{figure}
+
+\section{Module Responsibilities}
+\begin{table}[H]
+\centering
+\caption{Logical modules and responsibilities}
+\begin{tabularx}{\textwidth}{p{0.20\textwidth}Y}
+\toprule
+\textbf{Module} & \textbf{Responsibility} \\
+\midrule
+Concert & Concert catalog, publication status, ticket-category visibility \\
+Inventory & Ticket capacity and atomic reservation/release primitives \\
+Booking & Booking orchestration, price snapshot, transaction boundary, lifecycle \\
+Voucher & Eligibility, discount policy, quota reservation/release \\
+Idempotency & Retry deduplication, request fingerprint, response replay \\
+Operation & Booking monitoring, manual state transitions, audit history \\
+Shared & DB transaction utilities, validation, error contract, logging \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Why PostgreSQL Is the Consistency Boundary}
+The finite resources being protected---ticket inventory, voucher quota, booking state, and idempotency records---are relational and transactional. Keeping them in PostgreSQL avoids coordinating correctness across multiple distributed locking systems. Redis may still be useful for optional caching or rate limiting, but it is not the authoritative inventory source.
+
+\section{Scaling Direction}
+The API is stateless and can scale horizontally. The expiry worker can scale with row claiming (for example, \code{FOR UPDATE SKIP LOCKED}). If asynchronous integrations later become substantial, a transactional outbox can bridge committed database state to a message broker without introducing a dual-write correctness problem.

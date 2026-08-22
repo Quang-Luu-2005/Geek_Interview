@@ -1,0 +1,37 @@
+\section{Testing Layers}
+\begin{table}[H]
+\centering
+\caption{Testing strategy}
+\begin{tabularx}{\textwidth}{p{0.20\textwidth}YY}
+\toprule
+\textbf{Layer} & \textbf{Purpose} & \textbf{Examples} \\
+\midrule
+Unit & Pure domain policies & Pricing, voucher eligibility, state machine, request fingerprint \\
+Integration & Real PostgreSQL semantics & Transactions, constraints, repository SQL, rollback behavior \\
+Concurrency & Prove critical invariants under races & Oversell, idempotency race, final voucher, confirm-vs-expire \\
+API/Postman & Reviewer-visible workflow validation & Customer happy path, admin operations, documented edge cases \\
+Load & Measure behavior under stated and burst traffic & Throughput, latency, expected 4xx vs system errors \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Invariant-to-Test Traceability}
+\begin{table}[H]
+\centering
+\caption{Critical correctness evidence}
+\begin{tabularx}{\textwidth}{p{0.16\textwidth}p{0.21\textwidth}Y}
+\toprule
+\textbf{Test ID} & \textbf{Invariant} & \textbf{Scenario / Expected Result} \\
+\midrule
+CONC-001 & INV-01 & 100 requests compete for 10 tickets; exactly 10 succeed; final stock=0 \\
+CONC-002 & INV-02 & 20 concurrent requests use same user/key/payload; one logical booking exists \\
+CONC-003 & INV-03 & 20 users compete for final voucher quota=1; exactly one redemption succeeds \\
+CONC-004 & INV-05 & Confirm and expiry race; exactly one valid final outcome and resource state \\
+INT-001 & INV-04 & Voucher reservation failure causes ticket reservation to roll back \\
+INT-002 & INV-06 & Changing current ticket price does not change existing booking total \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Evidence Standard}
+Concurrency tests should verify both the HTTP/API result and final database state. A test that only counts response codes without checking inventory, booking rows, and voucher rows is insufficient evidence for consistency guarantees.

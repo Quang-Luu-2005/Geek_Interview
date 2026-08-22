@@ -1,0 +1,15 @@
+This report documents the design and implementation approach for a backend system serving both customer-facing booking flows and internal operation workflows for a Concert Ticket Booking Platform. The assessment highlights limited ticket inventory, limited promotional vouchers, retry-induced duplicate bookings, and flash-sale traffic spikes as the main engineering risks \cite{geekup-assessment}.
+
+The implementation deliberately prioritizes \textbf{correctness and explainability} over infrastructure complexity. The proposed baseline architecture is a modular monolith backed by PostgreSQL as the transactional consistency boundary. The critical booking path is designed so that ticket reservation, voucher reservation, price snapshotting, and booking creation succeed or fail atomically.
+
+The primary engineering guarantees are:
+\begin{itemize}
+  \item ticket inventory never becomes negative;
+  \item retrying the same logical booking request does not create a second booking;
+  \item voucher usage cannot exceed global or per-user limits;
+  \item expired reservations release finite resources safely;
+  \item booking status transitions remain valid under concurrent operation;
+  \item historical booking prices remain immutable after creation.
+\end{itemize}
+
+The report also separates the \textbf{current assessment scope} from \textbf{production evolution}. Optional enhancements such as scalable expiry workers, transactional outbox processing, rate limiting, and deeper observability are documented as evolutionary steps rather than prerequisites for correctness.

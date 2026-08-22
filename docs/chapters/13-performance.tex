@@ -1,0 +1,39 @@
+\section{Load Interpretation}
+The stated peak of 300--500 booking requests per minute is approximately 5--8.3 booking requests per second. Therefore, the primary performance concern is not raw throughput but hot-row contention, transaction duration, and behavior under bursts.
+
+\section{Recommended Load Scenarios}
+\begin{table}[H]
+\centering
+\caption{Performance scenarios}
+\begin{tabularx}{\textwidth}{p{0.22\textwidth}YY}
+\toprule
+\textbf{Scenario} & \textbf{Purpose} & \textbf{Metrics} \\
+\midrule
+Steady stated load & Validate baseline health at 300--500 req/min & throughput, p50/p95/p99, system error rate \\
+Burst traffic & Observe retry/queue pressure & latency, DB connection pressure, 429/5xx behavior \\
+Hot inventory & Stress single category contention & successful reservations, lock wait, sold-out response latency \\
+Voucher contention & Stress final promotion quota & exact redemption count, latency, conflict rate \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Result Template}
+\begin{resultbox}[Replace with measured result]
+\textbf{Environment:} CPU/RAM/OS/Docker/PostgreSQL version\\
+\textbf{Commit:} <git SHA>\\
+\textbf{Scenario:} <k6 scenario name>\\
+\textbf{Throughput:} <value>\\
+\textbf{p95 latency:} <value>\\
+\textbf{System error rate:} <value>\\
+\textbf{Expected business rejects:} <value>\\
+\textbf{Interpretation:} <what became the bottleneck and why>
+\end{resultbox}
+
+\section{Optimization Priorities}
+\begin{enumerate}
+  \item keep booking transactions short;
+  \item use correct indexes for lookup and expiry scans;
+  \item avoid external network calls inside the DB transaction;
+  \item separate expected sold-out/voucher conflicts from infrastructure failures;
+  \item scale stateless API instances only after measuring database contention.
+\end{enumerate}

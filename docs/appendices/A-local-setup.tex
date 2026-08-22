@@ -1,0 +1,34 @@
+\section{Prerequisites}
+Replace with the exact versions used by the final codebase.
+\begin{itemize}
+  \item Docker / Docker Compose
+  \item Runtime and package manager (for example Node.js + npm/pnpm, Java + Gradle/Maven, or .NET SDK)
+\end{itemize}
+
+\section{Quick Start}
+\begin{lstlisting}[language=bash,caption={Local quick-start template}]
+cp .env.example .env
+docker compose up -d
+
+# Replace with the real project commands
+<install command>
+<migrate command>
+<seed command>
+<start command>
+\end{lstlisting}
+
+\section{Verification}
+\begin{itemize}
+  \item Health endpoint: \apiendpoint{GET /health}
+  \item Swagger/OpenAPI: \apiendpoint{/docs}
+  \item Seeded customer/operator credentials: document them here if safe for local assessment use
+\end{itemize}
+
+\section{Test Commands}
+\begin{lstlisting}[language=bash,caption={Quality-gate command template}]
+<lint command>
+<unit test command>
+<integration test command>
+<concurrency test command>
+<load test command>
+\end{lstlisting}

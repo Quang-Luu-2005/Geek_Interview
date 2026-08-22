@@ -1,0 +1,21 @@
+\section{Evidence Capture Template}
+For each critical automated test, record the command, environment, commit SHA, and final DB-state assertions.
+
+\begin{longtable}{p{0.14\textwidth}p{0.23\textwidth}p{0.20\textwidth}p{0.30\textwidth}}
+\caption{Test evidence}\label{tab:test-evidence}\\
+\toprule
+\textbf{Test ID} & \textbf{Scenario} & \textbf{Result} & \textbf{Evidence / Notes} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Test ID} & \textbf{Scenario} & \textbf{Result} & \textbf{Evidence / Notes} \\
+\midrule
+\endhead
+CONC-001 & 100 requests / 10 tickets & TODO & 10 success, 90 sold-out, final stock 0 \\
+CONC-002 & 20 same idempotency requests & TODO & One logical booking, one inventory decrement \\
+CONC-003 & 20 users / last voucher & TODO & Exactly one redemption \\
+CONC-004 & Confirm vs expiry race & TODO & One valid final outcome \\
+INT-001 & Voucher failure rollback & TODO & Ticket inventory restored by transaction rollback \\
+INT-002 & Historical price immutability & TODO & Existing booking unchanged after catalog price update \\
+\bottomrule
+\end{longtable}

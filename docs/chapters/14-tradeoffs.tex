@@ -1,0 +1,27 @@
+\section{Summary of Major Decisions}
+\begin{table}[H]
+\centering
+\caption{Architecture trade-off summary}
+\begin{tabularx}{\textwidth}{p{0.22\textwidth}p{0.27\textwidth}Y}
+\toprule
+\textbf{Decision} & \textbf{Chosen Option} & \textbf{Why / Trade-off} \\
+\midrule
+Service architecture & Modular monolith & Simple ACID transactions and fast assessment delivery; less independent scaling than microservices \\
+Inventory consistency & PostgreSQL atomic update & Single source of truth and simple failure semantics; hot rows can contend \\
+Retry safety & DB-backed idempotency & Correct across process restarts; adds storage/lifecycle semantics \\
+Expiry processing & DB worker + optional SKIP LOCKED & No broker required; polling introduces bounded delay \\
+Async evolution & Transactional outbox (optional) & Reliable bridge to future broker; adds worker/table complexity \\
+Rate limiting & Optional resilience layer & Reduces abuse/retry storm; does not replace transactional correctness \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{What Was Deliberately Not Chosen}
+\subsection{Microservices}
+The stated traffic and assessment time frame do not justify distributed deployment, service discovery, inter-service retries, and cross-service transaction complexity for the core booking path.
+
+\subsection{Redis Distributed Lock for Inventory}
+Inventory is already authoritative in PostgreSQL. Adding a Redis lock would introduce a second coordination system and additional distributed failure modes without a demonstrated need.
+
+\subsection{Kafka as a Baseline Requirement}
+Kafka is useful when asynchronous integrations and independent consumers justify it. It is not required to make ticket reservation correct at the stated load. A transactional outbox documents a safe evolution path if event-driven integration becomes necessary.

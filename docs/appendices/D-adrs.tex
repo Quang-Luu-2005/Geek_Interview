@@ -1,0 +1,26 @@
+\section{ADR-001 --- Modular Monolith}
+\textbf{Status:} Accepted\\
+\textbf{Context:} The critical booking path needs atomic consistency across inventory, voucher, and booking state.\\
+\textbf{Decision:} Use a modular monolith for the assessment.\\
+\textbf{Alternatives:} Microservices.\\
+\textbf{Consequences:} Simpler transactions and local setup; lower independent-service scalability and deployment autonomy.
+
+\section{ADR-002 --- PostgreSQL for Inventory Consistency}
+\textbf{Status:} Accepted\\
+\textbf{Decision:} Use atomic conditional SQL updates and DB constraints rather than an external distributed lock as the primary correctness mechanism.\\
+\textbf{Consequence:} Hot inventory rows may become contention points, but the failure model remains simple and explicit.
+
+\section{ADR-003 --- DB-Backed Idempotency}
+\textbf{Status:} Accepted\\
+\textbf{Decision:} Scope idempotency key by user, store a request fingerprint, and replay the original logical result.\\
+\textbf{Consequence:} Requires lifecycle/retention policy for idempotency records.
+
+\section{ADR-004 --- Database-Polling Expiry Worker}
+\textbf{Status:} Accepted\\
+\textbf{Decision:} Process expired reservations in batches; optionally use \code{FOR UPDATE SKIP LOCKED} for multiple workers.\\
+\textbf{Consequence:} Expiration timing is bounded by poll interval rather than instantaneous.
+
+\section{ADR-005 --- Transactional Outbox (Optional)}
+\textbf{Status:} Proposed / Optional\\
+\textbf{Decision:} If asynchronous integrations are implemented, write domain events to an outbox in the same business transaction.\\
+\textbf{Consequence:} Adds outbox storage and a worker, but avoids DB+broker dual-write inconsistency.

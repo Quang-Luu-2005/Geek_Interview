@@ -1,0 +1,49 @@
+\section{State Model}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=1.8cm and 2.2cm,
+  state/.style={draw=Primary, rounded corners, fill=SoftBlue, minimum width=2.6cm, minimum height=0.9cm, align=center},
+  terminal/.style={draw=Secondary, rounded corners, fill=SoftGreen, minimum width=2.6cm, minimum height=0.9cm, align=center},
+  arrow/.style={-{Latex[length=2.3mm]}, thick, draw=Primary}
+]
+\node[state] (reserved) {RESERVED};
+\node[terminal, above right=of reserved] (confirmed) {CONFIRMED};
+\node[terminal, below right=of reserved] (expired) {EXPIRED};
+\node[terminal, below left=of reserved] (cancelled) {CANCELLED};
+\draw[arrow] (reserved) -- node[above,sloped]{confirm} (confirmed);
+\draw[arrow] (reserved) -- node[below,sloped]{timeout} (expired);
+\draw[arrow] (reserved) -- node[below,sloped]{cancel} (cancelled);
+\end{tikzpicture}
+\caption{Simplified booking lifecycle for the assessment}
+\label{fig:booking-state}
+\end{figure}
+
+\section{Reservation Expiry}
+New bookings have \code{status = RESERVED} and an \code{expires\_at} timestamp. A background worker finds expired reservations, transitions them to \code{EXPIRED}, and restores ticket/voucher resources inside one transaction.
+
+\section{Scalable Worker Claiming}
+\begin{lstlisting}[language=SQL,caption={Batch claim for expired reservations}]
+SELECT id
+FROM bookings
+WHERE status = 'RESERVED'
+  AND expires_at <= NOW()
+ORDER BY expires_at, id
+LIMIT 100
+FOR UPDATE SKIP LOCKED;
+\end{lstlisting}
+
+This pattern allows multiple workers to process disjoint rows without a separate distributed lock service.
+
+\section{Confirm-vs-Expire Race}
+A confirmation write should be conditional on both the current state and expiry boundary, for example:
+
+\begin{lstlisting}[language=SQL,caption={Conditional confirmation}]
+UPDATE bookings
+SET status = 'CONFIRMED', updated_at = NOW()
+WHERE id = :booking_id
+  AND status = 'RESERVED'
+  AND expires_at > NOW();
+\end{lstlisting}
+
+A zero-row result indicates that the booking is no longer eligible for confirmation. This prevents a stale read from confirming a reservation after it has expired.

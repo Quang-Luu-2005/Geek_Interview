@@ -1,0 +1,58 @@
+\section{Core Entities}
+\begin{table}[H]
+\centering
+\caption{Core persistence model}
+\begin{tabularx}{\textwidth}{p{0.25\textwidth}Y}
+\toprule
+\textbf{Table} & \textbf{Purpose} \\
+\midrule
+\code{users} & Customer/operator identity used by the assessment implementation \\
+\code{concerts} & Concert metadata and publication lifecycle \\
+\code{ticket\_categories} & VIP/Standard/etc. category and current sale price \\
+\code{ticket\_inventories} & Total and available capacity per ticket category \\
+\code{bookings} & Booking aggregate, status, total amounts, expiry timestamp \\
+\code{booking\_items} & Quantity and immutable unit-price snapshots \\
+\code{vouchers} & Promotion policy, validity period, global quota \\
+\code{voucher\_redemptions} & Per-user voucher usage and booking linkage \\
+\code{idempotency\_records} & Logical request deduplication and response replay state \\
+\code{booking\_status\_history} & Operational audit trail for transitions \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Critical Constraints}
+\begin{lstlisting}[language=SQL,caption={Representative database constraints}]
+ALTER TABLE ticket_inventories
+  ADD CONSTRAINT chk_inventory_non_negative
+  CHECK (available_quantity >= 0),
+  ADD CONSTRAINT chk_inventory_not_above_total
+  CHECK (available_quantity <= total_quantity);
+
+CREATE UNIQUE INDEX uq_idempotency_user_key
+  ON idempotency_records(user_id, idempotency_key);
+
+CREATE UNIQUE INDEX uq_voucher_user
+  ON voucher_redemptions(voucher_id, user_id);
+\end{lstlisting}
+
+\section{Index Strategy}
+Indexes should follow real query patterns rather than blanket indexing.
+
+\begin{table}[H]
+\centering
+\caption{Example query-to-index mapping}
+\begin{tabularx}{\textwidth}{YY}
+\toprule
+\textbf{Query Pattern} & \textbf{Suggested Index} \\
+\midrule
+Expire old reservations & \code{bookings(status, expires\_at)} \\
+Customer booking history & \code{bookings(user\_id, created\_at)} \\
+Operation filter by concert/status & \code{bookings(concert\_id, status, created\_at)} \\
+Voucher lookup by code & unique \code{vouchers(code)} \\
+Idempotency replay & unique \code{idempotency\_records(user\_id, idempotency\_key)} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Price Snapshotting}
+The request never supplies an authoritative total. The server reads current ticket price and promotion policy, calculates the amount, and persists immutable snapshots in \code{booking\_items} and \code{bookings}. This prevents future catalog changes from rewriting booking history.

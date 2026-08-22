@@ -1,0 +1,40 @@
+\section{Create Booking Flow}
+The critical path is intentionally short and transactional.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=0.58cm,
+  flowstep/.style={draw=Primary, rounded corners, fill=SoftBlue, minimum width=9.5cm, minimum height=0.65cm, align=center},
+  arrow/.style={-{Latex[length=2mm]}, thick, draw=Primary}
+]
+\node[flowstep] (s1) {1. Validate request and normalize ticket items};
+\node[flowstep, below=of s1] (s2) {2. Claim / check Idempotency-Key};
+\node[flowstep, below=of s2] (s3) {3. BEGIN DATABASE TRANSACTION};
+\node[flowstep, below=of s3] (s4) {4. Validate concert and ticket categories};
+\node[flowstep, below=of s4] (s5) {5. Atomically reserve ticket inventory};
+\node[flowstep, below=of s5] (s6) {6. Validate and atomically reserve voucher quota (optional)};
+\node[flowstep, below=of s6] (s7) {7. Calculate server-side price and snapshot amounts};
+\node[flowstep, below=of s7] (s8) {8. Insert booking and booking items};
+\node[flowstep, below=of s8] (s9) {9. COMMIT};
+\node[flowstep, below=of s9] (s10) {10. Persist/replay idempotent result and return response};
+
+\foreach \a/\b in {s1/s2,s2/s3,s3/s4,s4/s5,s5/s6,s6/s7,s7/s8,s8/s9,s9/s10}{\draw[arrow] (\a) -- (\b);}
+\end{tikzpicture}
+\caption{Create-booking transaction flow}
+\label{fig:create-booking-flow}
+\end{figure}
+
+\section{Transaction Boundary}
+The following operations belong inside one transaction:
+\begin{itemize}
+  \item ticket inventory reservation;
+  \item voucher quota reservation and redemption record;
+  \item booking and booking-item persistence;
+  \item any audit row that must be consistent with the transition being made.
+\end{itemize}
+
+External calls such as email, analytics, or a payment provider must not extend the core DB transaction. They should occur after commit or through an asynchronous reliability pattern such as a transactional outbox.
+
+\section{Multi-Category Reservation}
+When a booking contains multiple categories, category identifiers are normalized and processed in a deterministic order. This reduces deadlock risk and ensures the request is all-or-nothing: failure to reserve any category causes the transaction to roll back previously reserved categories automatically.

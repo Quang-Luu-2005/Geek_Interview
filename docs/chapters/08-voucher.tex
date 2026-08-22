@@ -1,0 +1,20 @@
+\section{Voucher Validation}
+Voucher validation includes status, validity window, applicability rules, remaining global quota, and per-user usage policy. The server calculates the discount; the client cannot submit an authoritative discount amount.
+
+\section{Atomic Global Quota Update}
+\begin{lstlisting}[language=SQL,caption={Atomic voucher quota reservation}]
+UPDATE vouchers
+SET used_count = used_count + 1
+WHERE id = :voucher_id
+  AND status = 'ACTIVE'
+  AND starts_at <= NOW()
+  AND expires_at > NOW()
+  AND used_count < usage_limit
+RETURNING used_count;
+\end{lstlisting}
+
+\section{Per-User Anti-Abuse Rule}
+For a one-use-per-user policy, \code{UNIQUE(voucher\_id, user\_id)} on \code{voucher\_redemptions} provides a database-backed guarantee. A retry of the same logical booking does not create another redemption because idempotency is applied before the booking can be duplicated.
+
+\section{Release Semantics}
+The report and implementation must define whether voucher quota is considered reserved at booking creation or consumed only on confirmation. Whichever model is chosen, expiration/cancellation must be idempotent so the same voucher allocation cannot be released twice.

@@ -1,0 +1,51 @@
+\section{Customer-Facing API Scope}
+\begin{table}[H]
+\centering
+\caption{Representative customer endpoints}
+\begin{tabularx}{\textwidth}{p{0.16\textwidth}p{0.35\textwidth}Y}
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Purpose} \\
+\midrule
+GET & \apiendpoint{/concerts} & Browse published concerts \\
+GET & \apiendpoint{/concerts/\{id\}} & Concert details \\
+GET & \apiendpoint{/concerts/\{id\}/ticket-categories} & Ticket categories, price, current availability \\
+POST & \apiendpoint{/bookings} & Atomic reservation with optional voucher \\
+GET & \apiendpoint{/bookings/\{id\}} & Booking detail/status \\
+GET & \apiendpoint{/me/bookings} & Customer booking history \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Operation API Scope}
+\begin{table}[H]
+\centering
+\caption{Representative operation endpoints}
+\begin{tabularx}{\textwidth}{p{0.16\textwidth}p{0.38\textwidth}Y}
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Purpose} \\
+\midrule
+GET & \apiendpoint{/admin/bookings} & Monitor/filter bookings \\
+GET & \apiendpoint{/admin/bookings/\{id\}} & Investigate booking detail \\
+PATCH & \apiendpoint{/admin/bookings/\{id\}/status} & Guarded manual status transition \\
+POST & \apiendpoint{/admin/concerts} & Minimal concert creation/publishing scope \\
+POST & \apiendpoint{/admin/vouchers} & Minimal voucher campaign creation if implemented \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Availability Semantics}
+Availability returned by read APIs is informational and may become stale immediately under concurrent demand. The authoritative inventory decision always occurs inside \apiendpoint{POST /bookings}.
+
+\section{Error Contract}
+\begin{lstlisting}[caption={Example business error response}]
+{
+  "code": "INSUFFICIENT_TICKET_INVENTORY",
+  "message": "Requested ticket quantity is no longer available",
+  "details": {
+    "ticketCategoryId": 10
+  },
+  "traceId": "..."
+}
+\end{lstlisting}
+
+Business conflicts should produce stable, documented errors rather than generic HTTP 500 responses.

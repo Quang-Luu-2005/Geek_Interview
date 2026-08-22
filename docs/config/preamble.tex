@@ -1,0 +1,130 @@
+% ============================================================
+% Core packages
+% ============================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in,headheight=15pt]{geometry}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,calc}
+
+% ============================================================
+% Typography and spacing
+% ============================================================
+\onehalfspacing
+\setlength{\parindent}{0pt}
+\setlist[itemize]{topsep=3pt,itemsep=2pt,parsep=0pt}
+\setlist[enumerate]{topsep=3pt,itemsep=2pt,parsep=0pt}
+
+% ============================================================
+% Professional palette
+% ============================================================
+\definecolor{Primary}{HTML}{17324D}
+\definecolor{Secondary}{HTML}{146C7E}
+\definecolor{Accent}{HTML}{D8892B}
+\definecolor{SoftBlue}{HTML}{EEF5F8}
+\definecolor{SoftGray}{HTML}{F4F6F8}
+\definecolor{SoftGreen}{HTML}{EDF7F1}
+\definecolor{SoftRed}{HTML}{FBEEEE}
+\definecolor{CodeBg}{HTML}{F7F8FA}
+\definecolor{CodeFrame}{HTML}{D7DCE2}
+\definecolor{CodeKeyword}{HTML}{214F82}
+\definecolor{CodeString}{HTML}{8B3E2F}
+\definecolor{CodeComment}{HTML}{5A6B5C}
+
+% ============================================================
+% Headings
+% ============================================================
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\color{Primary}}
+  {\filleft\Large\chaptername\ \thechapter}
+  {0.4ex}
+  {\titlerule\vspace{1ex}\Huge}
+  [\vspace{0.5ex}\titlerule]
+
+\titleformat{\section}{\Large\bfseries\color{Primary}}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\large\bfseries\color{Secondary}}{\thesubsection}{0.7em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{0.7em}{}
+
+% ============================================================
+% Header/footer
+% ============================================================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Concert Ticket Booking Platform}
+\fancyhead[R]{\small Backend Technical Assessment}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ============================================================
+% Hyperlinks
+% ============================================================
+\hypersetup{
+  colorlinks=true,
+  linkcolor=Primary,
+  citecolor=Secondary,
+  urlcolor=Secondary,
+  pdftitle={Concert Ticket Booking Platform - Backend System Design and Implementation Report},
+  pdfauthor={Candidate}
+}
+
+% ============================================================
+% Table helpers
+% ============================================================
+\renewcommand{\arraystretch}{1.2}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
+% ============================================================
+% Code listings
+% ============================================================
+\lstdefinestyle{reportcode}{
+  backgroundcolor=\color{CodeBg},
+  frame=single,
+  rulecolor=\color{CodeFrame},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{CodeKeyword}\bfseries,
+  stringstyle=\color{CodeString},
+  commentstyle=\color{CodeComment}\itshape,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  showstringspaces=false,
+  breaklines=true,
+  breakatwhitespace=false,
+  tabsize=2,
+  captionpos=b,
+  columns=fullflexible
+}
+\lstset{style=reportcode}
+
+\lstdefinelanguage{HTTP}{
+  morekeywords={GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS,HTTP},
+  sensitive=true,
+  morecomment=[l]{//},
+  morestring=[b]"
+}

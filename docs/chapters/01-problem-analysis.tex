@@ -1,0 +1,28 @@
+\section{Business Context}
+The platform supports customers who browse concerts, inspect ticket categories and prices, reserve tickets, apply promotional vouchers, and track booking status. The internal Operation Dashboard supports monitoring bookings, publishing concert tickets, validating ticket availability, managing voucher campaigns, handling failed or suspicious bookings, and manually updating booking status when necessary \cite{geekup-assessment}.
+
+\section{Traffic and Contention Profile}
+The assessment describes approximately 50,000 users and peak traffic of roughly 300--500 booking requests per minute \cite{geekup-assessment}. This corresponds to approximately 5--8.3 booking requests per second. The throughput itself is modest for a relational database; the difficult part is \textbf{contention on finite resources} during a flash sale.
+
+\begin{riskbox}[Concurrent finite-resource contention]
+Two or more requests may observe the same remaining ticket or voucher capacity at nearly the same time. Application-level ``check then update'' logic is therefore insufficient to guarantee correctness.
+\end{riskbox}
+
+\section{Primary Engineering Risks}
+\begin{table}[H]
+\centering
+\caption{Assessment risks and intended engineering response}
+\begin{tabularx}{\textwidth}{p{0.23\textwidth}YY}
+\toprule
+\textbf{Risk} & \textbf{Failure Mode} & \textbf{Design Response} \\
+\midrule
+Overselling & More tickets sold than inventory & Atomic conditional inventory update inside DB transaction \\
+Duplicate retries & Multiple bookings from one user intent & Idempotency key + database uniqueness + response replay \\
+Voucher abuse & Global/per-user quota exceeded & Atomic quota update + redemption constraint \\
+Flash-sale instability & Retry storms and hot-row contention & Short transactions, controlled errors, optional rate limiting, evidence-based load testing \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Design Goal}
+The central goal is not to maximize the number of features. The goal is to build a simple backend whose critical business invariants remain correct under concurrent and retried booking requests, while making design decisions and trade-offs easy to review and defend.

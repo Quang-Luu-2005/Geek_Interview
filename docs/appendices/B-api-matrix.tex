@@ -1,0 +1,23 @@
+\begin{longtable}{p{0.11\textwidth}p{0.36\textwidth}p{0.16\textwidth}p{0.26\textwidth}}
+\caption{API endpoint matrix}\label{tab:api-matrix}\\
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Actor} & \textbf{Notes} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Actor} & \textbf{Notes} \\
+\midrule
+\endhead
+GET & /concerts & Customer & Published concerts \\
+GET & /concerts/\{id\} & Customer & Concert detail \\
+GET & /concerts/\{id\}/ticket-categories & Customer & Price + informational availability \\
+POST & /bookings & Customer & Idempotency-Key; atomic reservation \\
+GET & /bookings/\{id\} & Customer & Ownership enforced \\
+GET & /me/bookings & Customer & Booking history \\
+GET & /admin/bookings & Operator & Filter/paginate \\
+GET & /admin/bookings/\{id\} & Operator & Investigation detail \\
+PATCH & /admin/bookings/\{id\}/status & Operator & Guarded transition + reason \\
+POST & /admin/concerts & Operator & Optional/minimal scope \\
+POST & /admin/vouchers & Operator & Optional/minimal scope \\
+\bottomrule
+\end{longtable}

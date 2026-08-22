@@ -1,0 +1,33 @@
+\section{Implemented Scope Matrix}
+Replace the status column below as implementation progresses.
+
+\begin{longtable}{p{0.42\textwidth}p{0.18\textwidth}p{0.30\textwidth}}
+\caption{Implementation scope}\label{tab:scope-matrix}\\
+\toprule
+\textbf{Capability} & \textbf{Status} & \textbf{Notes} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Capability} & \textbf{Status} & \textbf{Notes} \\
+\midrule
+\endhead
+Concert browsing & Planned & Customer API \\
+Ticket category and availability & Planned & Read-only availability snapshot \\
+Create booking & Planned & Core critical path \\
+Idempotent retries & Planned & Idempotency key + fingerprint \\
+Voucher validation/quota & Planned & Global + per-user policy \\
+Reservation expiry & Planned & Background worker \\
+Operation booking monitoring & Planned & Filter/list/detail \\
+Manual guarded status transition & Planned & State machine + audit \\
+Real payment gateway & Out of scope & Simulated/manual confirmation \\
+Seat-level reservation & Out of scope & Category-capacity model only \\
+Refund settlement & Out of scope & Future capability \\
+Multi-region active-active & Out of scope & Production evolution \\
+\bottomrule
+\end{longtable}
+
+\section{Known Limitations}
+For each limitation, state the operational impact and a realistic production evolution path. Do not describe an unimplemented future feature as if it were part of the current system.
+
+\section{Future Evolution}
+Possible future directions include payment integration, fraud/risk scoring, asynchronous notifications, transactional outbox to message broker, distributed rate limiting, and service extraction only when independent scaling or team ownership justifies the additional complexity.
