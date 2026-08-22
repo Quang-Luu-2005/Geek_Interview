@@ -33,6 +33,11 @@ atomic `POST /api/bookings` reservation path. See
 [docs/API_CUSTOMER.md](docs/API_CUSTOMER.md) for response contracts and the
 importable [Postman collection](postman/customer-apis.collection.json).
 
+Operation/admin workflows are documented in
+[docs/API_OPERATION.md](docs/API_OPERATION.md) with a separate importable
+[Postman collection](postman/operation-apis.collection.json). They require the
+seeded operator UUID in `x-user-id`.
+
 Until the authentication task adds a real access-token guard, booking reads use
 the seeded customer's UUID in an `x-user-id` header. The SQL query always
 enforces that ownership predicate; an unknown or cross-user booking returns

@@ -17,8 +17,8 @@ Create booking & Planned & Core critical path \\
 Idempotent retries & Planned & Idempotency key + fingerprint \\
 Voucher validation/quota & Planned & Global + per-user policy \\
 Reservation expiry & Planned & Background worker \\
-Operation booking monitoring & Planned & Filter/list/detail \\
-Manual guarded status transition & Planned & State machine + audit \\
+Operation booking monitoring & Implemented & Filter/list/detail with role guard and safe metadata \\
+Manual guarded status transition & Implemented & State machine + atomic resource release + audit \\
 Real payment gateway & Out of scope & Simulated/manual confirmation \\
 Seat-level reservation & Out of scope & Category-capacity model only \\
 Refund settlement & Out of scope & Future capability \\

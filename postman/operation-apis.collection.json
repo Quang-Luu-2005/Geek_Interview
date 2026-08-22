@@ -1,0 +1,99 @@
+{
+  "info": {
+    "name": "Ticket Booking - Operation APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "operatorUserId", "value": "" },
+    { "key": "bookingId", "value": "" },
+    { "key": "concertId", "value": "" },
+    { "key": "categoryId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "List bookings",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-user-id", "value": "{{operatorUserId}}" }],
+        "url": "{{baseUrl}}/api/admin/bookings?status=RESERVED&page=1&limit=20"
+      }
+    },
+    {
+      "name": "Booking detail with audit",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-user-id", "value": "{{operatorUserId}}" }],
+        "url": "{{baseUrl}}/api/admin/bookings/{{bookingId}}"
+      }
+    },
+    {
+      "name": "Guarded cancellation",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{operatorUserId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CANCELLED\",\n  \"reason\": \"Manual operations review\"\n}"
+        },
+        "url": "{{baseUrl}}/api/admin/bookings/{{bookingId}}/status"
+      }
+    },
+    {
+      "name": "Create draft concert",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{operatorUserId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"slug\": \"winter-festival-2027\",\n  \"name\": \"Winter Festival 2027\",\n  \"startsAt\": \"2027-12-31T12:00:00.000Z\"\n}"
+        },
+        "url": "{{baseUrl}}/api/admin/concerts"
+      }
+    },
+    {
+      "name": "Create ticket category and inventory",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{operatorUserId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"STANDARD\",\n  \"name\": \"Standard\",\n  \"price\": 50,\n  \"totalQuantity\": 1000\n}"
+        },
+        "url": "{{baseUrl}}/api/admin/concerts/{{concertId}}/ticket-categories"
+      }
+    },
+    {
+      "name": "Publish concert",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "x-user-id", "value": "{{operatorUserId}}" }],
+        "url": "{{baseUrl}}/api/admin/concerts/{{concertId}}/publish"
+      }
+    },
+    {
+      "name": "Create voucher",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{operatorUserId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"WINTER15\",\n  \"discountType\": \"PERCENT\",\n  \"discountValue\": 15,\n  \"usageLimit\": 100,\n  \"startsAt\": \"2027-01-01T00:00:00.000Z\",\n  \"expiresAt\": \"2027-12-31T00:00:00.000Z\",\n  \"applicableConcertId\": \"{{concertId}}\",\n  \"applicableTicketCategoryId\": \"{{categoryId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/admin/vouchers"
+      }
+    }
+  ]
+}

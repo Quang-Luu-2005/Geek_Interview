@@ -10,6 +10,8 @@ export interface BookingTransitionRow {
   expires_at: Date | string;
 }
 
+export type OperationBookingTarget = 'CONFIRMED' | 'EXPIRED' | 'CANCELLED';
+
 export interface ExpiredBookingRow {
   id: string;
   expires_at: Date | string;
@@ -27,6 +29,19 @@ export class BookingLifecycleRepository {
       FROM bookings
       WHERE user_id = ${userId}::uuid
         AND (id::text = ${identifier} OR booking_code = ${identifier})
+      LIMIT 1
+    `);
+    return rows[0] ?? null;
+  }
+
+  async findStatus(
+    transaction: TransactionClient,
+    identifier: string,
+  ): Promise<BookingTransitionRow | null> {
+    const rows = await transaction.$queryRaw<BookingTransitionRow[]>(Prisma.sql`
+      SELECT id::text AS id, booking_code, status, expires_at
+      FROM bookings
+      WHERE id::text = ${identifier} OR booking_code = ${identifier}
       LIMIT 1
     `);
     return rows[0] ?? null;
@@ -63,6 +78,28 @@ export class BookingLifecycleRepository {
         AND (id::text = ${identifier} OR booking_code = ${identifier})
         AND status = 'RESERVED'
         AND expires_at > NOW()
+      RETURNING id::text AS id, booking_code, status, expires_at
+    `);
+    return rows[0] ?? null;
+  }
+
+  async transitionByOperation(
+    transaction: TransactionClient,
+    identifier: string,
+    target: OperationBookingTarget,
+  ): Promise<BookingTransitionRow | null> {
+    const guard =
+      target === 'CONFIRMED'
+        ? Prisma.sql`AND expires_at > NOW()`
+        : target === 'EXPIRED'
+          ? Prisma.sql`AND expires_at <= NOW()`
+          : Prisma.empty;
+    const rows = await transaction.$queryRaw<BookingTransitionRow[]>(Prisma.sql`
+      UPDATE bookings
+      SET status = ${target}, updated_at = NOW()
+      WHERE (id::text = ${identifier} OR booking_code = ${identifier})
+        AND status = 'RESERVED'
+        ${guard}
       RETURNING id::text AS id, booking_code, status, expires_at
     `);
     return rows[0] ?? null;
@@ -110,7 +147,7 @@ export class BookingLifecycleRepository {
     fromStatus: string,
     toStatus: string,
     changedBy: string | null,
-    source: 'CUSTOMER_API' | 'RESERVATION_EXPIRY_WORKER',
+    source: 'CUSTOMER_API' | 'OPERATION_API' | 'RESERVATION_EXPIRY_WORKER',
     reason: string,
   ): Promise<void> {
     await transaction.$executeRaw(Prisma.sql`

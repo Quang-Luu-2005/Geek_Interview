@@ -8,12 +8,14 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
  * from accidentally becoming public endpoints.
  */
 export function requireCustomerUserId(headerValue?: string): string {
+  return requireAuthenticatedUserId(headerValue);
+}
+
+export function requireAuthenticatedUserId(headerValue?: string): string {
   const userId = headerValue?.trim();
 
   if (!userId || !UUID_PATTERN.test(userId)) {
-    throw new UnauthorizedException(
-      'A valid x-user-id header is required for customer booking APIs',
-    );
+    throw new UnauthorizedException('A valid x-user-id header is required');
   }
 
   return userId;

@@ -7,6 +7,7 @@ import { InventoryReservationRepository } from '../../inventory/infrastructure/i
 import { VoucherReservationRepository } from '../../voucher/infrastructure/voucher-reservation.repository';
 import { BookingReadService, BookingResponse } from './booking-read.service';
 import { BookingLifecycleRepository } from '../infrastructure/booking-lifecycle.repository';
+import type { OperationBookingTarget } from '../infrastructure/booking-lifecycle.repository';
 
 const EXPIRY_RELEASE_REASON = 'RESERVATION_EXPIRED';
 const CANCEL_RELEASE_REASON = 'BOOKING_CANCELLED';
@@ -78,6 +79,56 @@ export class BookingLifecycleService {
     );
 
     return this.bookingReadService.getOwned(userId, bookingId);
+  }
+
+  async transitionByOperation(
+    actorId: string,
+    identifier: string,
+    target: OperationBookingTarget,
+    reason: string,
+  ): Promise<string> {
+    return withTransaction(
+      this.database,
+      async (transaction) => {
+        const booking = await this.lifecycleRepository.transitionByOperation(
+          transaction,
+          identifier,
+          target,
+        );
+        if (!booking) {
+          const existing = await this.lifecycleRepository.findStatus(transaction, identifier);
+          if (!existing) throw new NotFoundException('Booking not found');
+          throw new BusinessException(
+            'BOOKING_NOT_TRANSITIONABLE',
+            'Booking status cannot be changed by this operation',
+            HttpStatus.CONFLICT,
+            { status: existing.status, target },
+          );
+        }
+
+        if (target === 'CONFIRMED') {
+          await this.voucherRepository.consumeForBooking(transaction, booking.id);
+        } else {
+          await this.releaseResources(
+            transaction,
+            booking.id,
+            target === 'CANCELLED' ? 'OPERATION_CANCELLED' : 'OPERATION_EXPIRED',
+          );
+        }
+
+        await this.lifecycleRepository.insertTransitionHistory(
+          transaction,
+          booking.id,
+          'RESERVED',
+          target,
+          actorId,
+          'OPERATION_API',
+          reason,
+        );
+        return booking.id;
+      },
+      { maxAttempts: 3 },
+    );
   }
 
   /** Process one worker batch inside one transaction. */

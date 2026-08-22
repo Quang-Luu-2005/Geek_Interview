@@ -33,6 +33,24 @@ POST & \apiendpoint{/admin/vouchers} & Minimal voucher campaign creation if impl
 \end{tabularx}
 \end{table}
 
+Operation routes require an elevated operator/admin identity. Booking list
+filters are status, concert, user, and creation-time ranges with stable
+pagination. Booking detail exposes status history, voucher redemption state,
+and idempotency outcome timestamps without request hashes or stored response
+bodies.
+
+Manual status commands accept only \code{CONFIRMED}, \code{EXPIRED}, or
+\code{CANCELLED} as targets from \code{RESERVED}. The command-specific expiry
+guard is evaluated in PostgreSQL; cancellation/expiry release inventory and
+voucher quota in the same transaction, and every successful command appends an
+\code{OPERATION\_API} audit row with the required reason.
+
+The intentionally minimal catalog scope creates draft concerts, creates ticket
+categories with initial inventory, publishes only future concerts with
+inventory, and creates validated vouchers. Update/delete APIs are omitted so
+published prices, inventory history, and already-redeemed voucher policy cannot
+be changed without a separately specified business rule.
+
 \section{Availability Semantics}
 Availability returned by read APIs is informational and may become stale immediately under concurrent demand. The authoritative inventory decision always occurs inside \apiendpoint{POST /bookings}.
 

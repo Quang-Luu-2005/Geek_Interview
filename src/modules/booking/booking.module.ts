@@ -25,5 +25,6 @@ import { ReservationExpiryWorker } from '../../workers/reservation-expiry/reserv
     BookingLifecycleService,
     ReservationExpiryWorker,
   ],
+  exports: [BookingLifecycleService],
 })
 export class BookingModule {}
