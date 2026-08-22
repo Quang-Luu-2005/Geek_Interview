@@ -1,0 +1,12 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Domain models are introduced with the database design task. The foundation
+// uses Prisma's connection/query API for health checks and keeps versioned SQL
+// migrations as the deployable schema source for now.
