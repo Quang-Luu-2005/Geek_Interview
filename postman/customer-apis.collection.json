@@ -7,7 +7,8 @@
     { "key": "baseUrl", "value": "http://localhost:3000" },
     { "key": "customerUserId", "value": "" },
     { "key": "concertId", "value": "summer-festival-2026" },
-    { "key": "bookingId", "value": "" }
+    { "key": "bookingId", "value": "" },
+    { "key": "standardCategoryId", "value": "" }
   ],
   "item": [
     {
@@ -36,6 +37,21 @@
         "method": "GET",
         "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
         "url": "{{baseUrl}}/api/bookings/{{bookingId}}"
+      }
+    },
+    {
+      "name": "Create booking",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{customerUserId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"items\": [{ \"ticketCategoryId\": \"{{standardCategoryId}}\", \"quantity\": 1 }]\n}"
+        },
+        "url": "{{baseUrl}}/api/bookings"
       }
     }
   ]

@@ -71,6 +71,44 @@ ownership predicate is applied to the detail query. A missing or cross-user
 booking returns the same `404 Booking not found` response, preventing existence
 leaks.
 
+### `POST /api/bookings`
+
+Requires `x-user-id` and accepts `concertId` as either the concert UUID or
+stable slug. The request contains only category IDs and quantities; price and
+totals are always read and calculated inside the database transaction.
+
+```json
+{
+  "concertId": "summer-festival-2026",
+  "items": [
+    { "ticketCategoryId": "...", "quantity": 2 }
+  ],
+  "voucherCode": "FLASH10"
+}
+```
+
+The transaction validates the published/not-started concert, rejects duplicate
+categories and quantities above 10, sorts category UUIDs before conditional
+inventory updates, reserves an optional voucher, snapshots prices, inserts the
+booking/items/status history, and commits or rolls back as one unit. New
+reservations are `RESERVED` for 10 minutes.
+
+Business rejections use a stable `{ code, message, details? }` body and do not
+become HTTP 500s:
+
+| HTTP | Code | Meaning |
+| --- | --- | --- |
+| 400 | `INVALID_ITEM` | Category does not belong to the concert or request has duplicate items |
+| 409 | `CONCERT_NOT_BOOKABLE` | Concert is not published or has already started |
+| 409 | `INSUFFICIENT_TICKET_INVENTORY` | Conditional decrement affected zero rows |
+| 409 | `VOUCHER_NOT_APPLICABLE` | Voucher is invalid, expired, disabled, or exhausted |
+| 409 | `VOUCHER_ALREADY_REDEEMED` | One-use-per-customer voucher was already used |
+
+Inventory availability is never checked with a separate SELECT-before-UPDATE
+operation. The affected row from `UPDATE ... WHERE available_quantity >= qty
+RETURNING ...` is the concurrency decision. This prevents overselling and
+rolls back earlier category reservations if a later category or voucher fails.
+
 ## Postman
 
 Import [`postman/customer-apis.collection.json`](../postman/customer-apis.collection.json)

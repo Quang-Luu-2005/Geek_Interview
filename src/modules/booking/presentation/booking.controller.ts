@@ -1,12 +1,28 @@
-import { Controller, Get, Headers, Param, Query } from '@nestjs/common';
+import { Controller, Get, Headers, Param, Post, Query, Body } from '@nestjs/common';
 
 import { requireCustomerUserId } from '../../../shared/http/customer-user';
 import { BookingReadService } from '../application/booking-read.service';
+import { CreateBookingService } from '../application/create-booking.service';
+import { CreateBookingDto } from './dto/create-booking.dto';
 import { PaginationQueryDto } from '../../concert/presentation/dto/pagination-query.dto';
 
 @Controller()
 export class BookingController {
-  constructor(private readonly bookingReadService: BookingReadService) {}
+  constructor(
+    private readonly bookingReadService: BookingReadService,
+    private readonly createBookingService: CreateBookingService,
+  ) {}
+
+  @Post('bookings')
+  create(
+    @Body() request: CreateBookingDto,
+    @Headers('x-user-id') userIdHeader: string | undefined,
+  ) {
+    const userId = requireCustomerUserId(userIdHeader);
+    return this.createBookingService
+      .execute(userId, request)
+      .then((booking) => ({ data: booking }));
+  }
 
   @Get('me/bookings')
   listMine(

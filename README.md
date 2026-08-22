@@ -27,8 +27,9 @@ the database cannot be reached. The `/api` prefix is reserved for business APIs.
 
 ## Customer read APIs
 
-Task 04 implements the published-concert browse/detail flow, ticket category
-price/availability reads, and ownership-scoped booking history/detail. See
+Tasks 04–05 implement the published-concert browse/detail flow, ticket category
+price/availability reads, ownership-scoped booking history/detail, and the
+atomic `POST /api/bookings` reservation path. See
 [docs/API_CUSTOMER.md](docs/API_CUSTOMER.md) for response contracts and the
 importable [Postman collection](postman/customer-apis.collection.json).
 
