@@ -80,8 +80,13 @@ subtotal, discount, or final amount.
 
 `vouchers.used_count` is the global quota counter. `voucher_redemptions` records
 which user used which voucher for which booking. The unique `(voucher_id,
-user_id)` constraint protects the one-use-per-user policy; the unique booking FK
-prevents a booking from claiming multiple voucher redemptions.
+user)` partial unique index protects the one-use-per-user policy while a
+`RELEASED` reservation can be retried after expiry/cancellation. Optional
+`applicable_concert_id` and `applicable_ticket_category_id` scope a promotion;
+NULL means globally applicable. A redemption starts `RESERVED`, becomes
+`CONSUMED` on confirmation, or becomes `RELEASED` when a reserved booking
+expires/cancels. Release decrements `used_count` exactly once and preserves the
+row as audit evidence.
 
 ### `idempotency_records`
 
@@ -106,7 +111,7 @@ booking state machine remains the authority.
 | One idempotency key has one logical request | `UNIQUE(user_id, idempotency_key)` | `CONC-002` |
 | Voucher code is unique | `UNIQUE(vouchers.code)` | Persistence constraint integration test |
 | Voucher quota is bounded | `used_count CHECK` and conditional quota update | `CONC-003` |
-| One user cannot reuse a one-use voucher | `UNIQUE(voucher_id, user_id)` | Persistence constraint integration test |
+| One user cannot reuse an active one-use voucher | Partial unique index on `(voucher_id, user_id)` where status is not `RELEASED` | Persistence constraint integration test |
 | Booking amount is internally consistent | amount checks in migration `0002` | Price snapshot integration test |
 | Booking item history is immutable by design | `unit_price` and `line_total` are stored on item | Price snapshot integration test |
 | Ownership references are valid | Foreign keys | Persistence constraint integration test |

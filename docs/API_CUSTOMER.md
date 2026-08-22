@@ -95,6 +95,11 @@ inventory updates, reserves an optional voucher, snapshots prices, inserts the
 booking/items/status history, and commits or rolls back as one unit. New
 reservations are `RESERVED` for 10 minutes.
 
+Vouchers may be global or scoped to one concert/category. A successful booking
+creates a `RESERVED` redemption; confirmation can mark it `CONSUMED`, while an
+expiry/cancellation release marks it `RELEASED`, decrements global quota once,
+and retains the redemption row for audit.
+
 For the same customer and key, an equivalent request (including a different
 item order or voucher casing) replays the original booking response without
 decrementing inventory or voucher quota again. Reusing the key with a different
@@ -111,7 +116,10 @@ become HTTP 500s:
 | 400 | `INVALID_ITEM` | Category does not belong to the concert or request has duplicate items |
 | 409 | `CONCERT_NOT_BOOKABLE` | Concert is not published or has already started |
 | 409 | `INSUFFICIENT_TICKET_INVENTORY` | Conditional decrement affected zero rows |
-| 409 | `VOUCHER_NOT_APPLICABLE` | Voucher is invalid, expired, disabled, or exhausted |
+| 409 | `VOUCHER_NOT_APPLICABLE` | Voucher is invalid, disabled, or outside its concert/category scope |
+| 409 | `VOUCHER_NOT_STARTED` | Voucher validity window has not started |
+| 409 | `VOUCHER_EXPIRED` | Voucher validity window has ended |
+| 409 | `VOUCHER_EXHAUSTED` | Global voucher quota is exhausted |
 | 409 | `VOUCHER_ALREADY_REDEEMED` | One-use-per-customer voucher was already used |
 | 409 | `IDEMPOTENCY_KEY_REUSED` | Same key was used with a different request payload |
 | 409 | `IDEMPOTENCY_REQUEST_IN_PROGRESS` | A legacy/stale processing record has no replayable result |

@@ -177,7 +177,7 @@ describe('booking core API', () => {
     });
 
     expect(result.response.status).toBe(409);
-    expect(result.body.code).toBe('VOUCHER_NOT_APPLICABLE');
+    expect(result.body.code).toBe('VOUCHER_EXHAUSTED');
     expect(await availability(vipCategoryId)).toBe(before);
     const voucherAfter = await client.query<{ used_count: number }>(
       `SELECT used_count FROM vouchers WHERE code = 'EXHAUSTED'`,

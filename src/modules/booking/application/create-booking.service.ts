@@ -3,13 +3,13 @@ import { randomUUID } from 'node:crypto';
 
 import { ConcertBookingRepository } from '../../concert/infrastructure/concert-booking.repository';
 import { InventoryReservationRepository } from '../../inventory/infrastructure/inventory-reservation.repository';
-import { VoucherReservationRepository } from '../../voucher/infrastructure/voucher-reservation.repository';
-import { BusinessException } from '../../../shared/errors/business.exception';
 import {
-  centsToDecimal,
-  decimalToCents,
-  percentageDiscountCents,
-} from '../../../shared/money/money';
+  VoucherReservationError,
+  VoucherReservationRepository,
+} from '../../voucher/infrastructure/voucher-reservation.repository';
+import { calculateVoucherDiscountCents } from '../../voucher/application/voucher-discount';
+import { BusinessException } from '../../../shared/errors/business.exception';
+import { centsToDecimal, decimalToCents } from '../../../shared/money/money';
 import { withTransaction } from '../../../shared/database/transaction';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { BookingResponse } from './booking-read.service';
@@ -189,8 +189,45 @@ export class CreateBookingService {
               transaction,
               voucherCode,
               userId,
+              concert.id,
+              categoryIds,
             );
           } catch (error) {
+            if (error instanceof VoucherReservationError) {
+              if (error.code === 'VOUCHER_ALREADY_REDEEMED') {
+                throw new BusinessException(
+                  'VOUCHER_ALREADY_REDEEMED',
+                  'Voucher has already been redeemed by this customer',
+                  HttpStatus.CONFLICT,
+                );
+              }
+              if (error.code === 'VOUCHER_EXHAUSTED') {
+                throw new BusinessException(
+                  'VOUCHER_EXHAUSTED',
+                  'Voucher global quota has been exhausted',
+                  HttpStatus.CONFLICT,
+                );
+              }
+              if (error.code === 'VOUCHER_EXPIRED') {
+                throw new BusinessException(
+                  'VOUCHER_EXPIRED',
+                  'Voucher is expired or outside its validity window',
+                  HttpStatus.CONFLICT,
+                );
+              }
+              if (error.code === 'VOUCHER_NOT_STARTED') {
+                throw new BusinessException(
+                  'VOUCHER_NOT_STARTED',
+                  'Voucher is not active yet',
+                  HttpStatus.CONFLICT,
+                );
+              }
+              throw new BusinessException(
+                'VOUCHER_NOT_APPLICABLE',
+                'Voucher is invalid, disabled, or not applicable to this booking',
+                HttpStatus.CONFLICT,
+              );
+            }
             if (error instanceof Error && error.message === 'VOUCHER_ALREADY_REDEEMED') {
               throw new BusinessException(
                 'VOUCHER_ALREADY_REDEEMED',
@@ -203,16 +240,15 @@ export class CreateBookingService {
             }
             throw new BusinessException(
               'VOUCHER_NOT_APPLICABLE',
-              'Voucher is invalid, expired, disabled, or exhausted',
+              'Voucher is invalid, disabled, or not applicable to this booking',
               HttpStatus.CONFLICT,
             );
           }
 
-          discountCents =
-            reservedVoucher.discount_type === 'PERCENT'
-              ? percentageDiscountCents(subtotalCents, reservedVoucher.discount_value)
-              : decimalToCents(reservedVoucher.discount_value);
-          if (discountCents > subtotalCents) discountCents = subtotalCents;
+          discountCents = calculateVoucherDiscountCents(subtotalCents, {
+            discountType: reservedVoucher.discount_type,
+            discountValue: reservedVoucher.discount_value,
+          });
         }
 
         const finalCents = subtotalCents - discountCents;
@@ -285,7 +321,7 @@ export class CreateBookingService {
     requestItems: readonly { ticketCategoryId: string; quantity: number }[],
   ): NormalizedItem[] {
     const items = requestItems.map((item) => ({
-      ticketCategoryId: item.ticketCategoryId.trim(),
+      ticketCategoryId: item.ticketCategoryId.trim().toLowerCase(),
       quantity: item.quantity,
     }));
     const invalidQuantity = items.find(

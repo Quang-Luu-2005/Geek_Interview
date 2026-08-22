@@ -32,7 +32,8 @@ CREATE UNIQUE INDEX uq_idempotency_user_key
   ON idempotency_records(user_id, idempotency_key);
 
 CREATE UNIQUE INDEX uq_voucher_user
-  ON voucher_redemptions(voucher_id, user_id);
+  ON voucher_redemptions(voucher_id, user_id)
+  WHERE status <> 'RELEASED';
 \end{lstlisting}
 
 \section{Index Strategy}

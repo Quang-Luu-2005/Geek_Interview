@@ -69,6 +69,8 @@ erDiagram
         integer usage_limit
         integer used_count
         text status
+        uuid applicable_concert_id FK
+        uuid applicable_ticket_category_id FK
         timestamptz starts_at
         timestamptz expires_at
     }
@@ -77,7 +79,10 @@ erDiagram
         uuid voucher_id FK
         uuid user_id FK
         uuid booking_id FK,UK
+        text status
         timestamptz redeemed_at
+        timestamptz released_at
+        text released_reason
     }
     IDEMPOTENCY_RECORDS {
         uuid id PK
