@@ -5,12 +5,11 @@ flow. The API is mounted below `/api`.
 
 ## Identity used in the current assessment build
 
-The authentication/authorization task has not been implemented yet. Customer
-booking endpoints therefore require a development-only `x-user-id` header
-containing the seeded customer's UUID. The header is validated as a UUID and
-is always included in the SQL ownership predicate. When the auth guard is
-added, it should replace this header at the presentation boundary without
-changing the repository queries.
+Authentication is intentionally simplified for this assessment: customer
+booking endpoints require a development-only `x-user-id` header containing the
+seeded customer's UUID. The header is validated as a UUID and is always
+included in the SQL ownership predicate. A production access-token guard can
+replace this presentation boundary without changing the repository queries.
 
 ## Endpoints
 
@@ -156,3 +155,11 @@ collection includes browse, detail, categories, create booking, own history,
 and booking detail, confirm, and cancel requests. The reservation expiry worker
 polls `RESERVED` rows every 30 seconds by default; set
 `RESERVATION_EXPIRY_WORKER_ENABLED=false` to disable it for a local process.
+## API quality headers and errors
+
+All responses include `X-Request-ID`; clients may send one to correlate a
+request, otherwise the API generates it. Errors have the stable shape
+`{ code, message, details?, traceId }` and never expose stack traces. Booking
+creation also returns `429 RATE_LIMITED` with `Retry-After` when the per-user/IP
+flash-sale guard is saturated. The complete machine-readable contract is at
+[`/openapi.yaml`](../openapi/openapi.yaml).

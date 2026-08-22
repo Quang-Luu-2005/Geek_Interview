@@ -24,6 +24,8 @@ npm run start:dev
 
 The health endpoint is `GET http://localhost:3000/health`. It returns `503` when
 the database cannot be reached. The `/api` prefix is reserved for business APIs.
+The static OpenAPI contract is available at `http://localhost:3000/openapi.yaml`;
+Prometheus-compatible counters are at `http://localhost:3000/metrics`.
 
 ## Customer read APIs
 
@@ -42,6 +44,11 @@ Until the authentication task adds a real access-token guard, booking reads use
 the seeded customer's UUID in an `x-user-id` header. The SQL query always
 enforces that ownership predicate; an unknown or cross-user booking returns
 `404` to avoid existence leaks.
+
+Task 10 documents the current security simplification in
+[docs/SECURITY_ASSUMPTIONS.md](docs/SECURITY_ASSUMPTIONS.md) and the structured
+logs, metrics, trace IDs, and rate-limit policy in
+[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md).
 
 ## Docker setup
 

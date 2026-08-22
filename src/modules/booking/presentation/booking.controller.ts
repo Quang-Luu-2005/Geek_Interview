@@ -17,12 +17,13 @@ export class BookingController {
   ) {}
 
   @Post('bookings')
-  create(
+  async create(
     @Body() request: CreateBookingDto,
     @Headers('x-user-id') userIdHeader: string | undefined,
     @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
   ) {
     const userId = requireCustomerUserId(userIdHeader);
+    await this.bookingReadService.requireCustomer(userId);
     const idempotencyKey = requireIdempotencyKey(idempotencyKeyHeader);
     return this.createBookingService
       .execute(userId, request, idempotencyKey)
@@ -30,33 +31,46 @@ export class BookingController {
   }
 
   @Post('bookings/:id/confirm')
-  confirm(@Param('id') identifier: string, @Headers('x-user-id') userIdHeader: string | undefined) {
+  async confirm(
+    @Param('id') identifier: string,
+    @Headers('x-user-id') userIdHeader: string | undefined,
+  ) {
     const userId = requireCustomerUserId(userIdHeader);
+    await this.bookingReadService.requireCustomer(userId);
     return this.bookingLifecycleService
       .confirm(userId, identifier)
       .then((booking) => ({ data: booking }));
   }
 
   @Post('bookings/:id/cancel')
-  cancel(@Param('id') identifier: string, @Headers('x-user-id') userIdHeader: string | undefined) {
+  async cancel(
+    @Param('id') identifier: string,
+    @Headers('x-user-id') userIdHeader: string | undefined,
+  ) {
     const userId = requireCustomerUserId(userIdHeader);
+    await this.bookingReadService.requireCustomer(userId);
     return this.bookingLifecycleService
       .cancel(userId, identifier)
       .then((booking) => ({ data: booking }));
   }
 
   @Get('me/bookings')
-  listMine(
+  async listMine(
     @Headers('x-user-id') userIdHeader: string | undefined,
     @Query() query: PaginationQueryDto,
   ) {
     const userId = requireCustomerUserId(userIdHeader);
+    await this.bookingReadService.requireCustomer(userId);
     return this.bookingReadService.listForUser(userId, query.page, query.limit);
   }
 
   @Get('bookings/:id')
-  detail(@Param('id') identifier: string, @Headers('x-user-id') userIdHeader: string | undefined) {
+  async detail(
+    @Param('id') identifier: string,
+    @Headers('x-user-id') userIdHeader: string | undefined,
+  ) {
     const userId = requireCustomerUserId(userIdHeader);
+    await this.bookingReadService.requireCustomer(userId);
     return this.bookingReadService
       .getOwned(userId, identifier)
       .then((booking) => ({ data: booking }));

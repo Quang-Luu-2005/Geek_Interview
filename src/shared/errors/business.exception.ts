@@ -25,7 +25,8 @@ export type BusinessErrorCode =
   | 'IDEMPOTENCY_KEY_INVALID'
   | 'IDEMPOTENCY_KEY_REUSED'
   | 'IDEMPOTENCY_REQUEST_IN_PROGRESS'
-  | 'IDEMPOTENCY_RESULT_UNAVAILABLE';
+  | 'IDEMPOTENCY_RESULT_UNAVAILABLE'
+  | 'RATE_LIMITED';
 
 export class BusinessException extends HttpException {
   constructor(

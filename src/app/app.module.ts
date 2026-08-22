@@ -9,7 +9,9 @@ import { IdempotencyModule } from '../modules/idempotency/idempotency.module';
 import { InventoryModule } from '../modules/inventory/inventory.module';
 import { OperationModule } from '../modules/operation/operation.module';
 import { VoucherModule } from '../modules/voucher/voucher.module';
+import { ObservabilityModule } from '../shared/observability/observability.module';
 import { HealthController } from './health.controller';
+import { OpenApiController } from './openapi.controller';
 
 @Module({
   imports: [
@@ -21,7 +23,8 @@ import { HealthController } from './health.controller';
     VoucherModule,
     IdempotencyModule,
     OperationModule,
+    ObservabilityModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, OpenApiController],
 })
 export class AppModule {}

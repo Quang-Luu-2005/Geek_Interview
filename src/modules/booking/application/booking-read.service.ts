@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { BookingReadRepository, BookingReadRow } from '../infrastructure/booking-read.repository';
 
@@ -43,6 +48,12 @@ export interface PaginatedBookingResponse {
 @Injectable()
 export class BookingReadService {
   constructor(private readonly repository: BookingReadRepository) {}
+
+  async requireCustomer(userId: string): Promise<void> {
+    const role = await this.repository.findRole(userId);
+    if (!role) throw new UnauthorizedException('Customer identity is not recognized');
+    if (role !== 'CUSTOMER') throw new ForbiddenException('A customer role is required');
+  }
 
   async listForUser(
     userId: string,

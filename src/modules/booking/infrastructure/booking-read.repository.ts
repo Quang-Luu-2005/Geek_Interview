@@ -57,6 +57,18 @@ interface RawBookingListRow extends RawBookingRow {
 export class BookingReadRepository {
   constructor(private readonly database: PrismaService) {}
 
+  async findRole(userId: string): Promise<'CUSTOMER' | 'OPERATOR' | 'ADMIN' | null> {
+    const rows = await this.database.$queryRaw<
+      { role: 'CUSTOMER' | 'OPERATOR' | 'ADMIN' }[]
+    >(Prisma.sql`
+      SELECT role
+      FROM users
+      WHERE id = ${userId}::uuid
+      LIMIT 1
+    `);
+    return rows[0]?.role ?? null;
+  }
+
   async findByUserPage(userId: string, page: number, limit: number): Promise<BookingListRow[]> {
     const offset = (page - 1) * limit;
     const rows = await this.database.$queryRaw<RawBookingListRow[]>(Prisma.sql`

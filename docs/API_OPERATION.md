@@ -51,3 +51,10 @@ actor, `OPERATION_API` source, reason, and timestamp in the same transaction.
 Full concert/category/voucher update and delete APIs are intentionally omitted:
 there is no safe business policy for changing published inventory, historical
 prices, or a voucher already used by customers in this assessment scope.
+## API quality headers and errors
+
+All responses include `X-Request-ID`; errors use
+`{ code, message, details?, traceId }`. Role failures are `401 UNAUTHORIZED` for
+unknown identities and `403 FORBIDDEN` for customers. No stack or database
+details are returned. See [`/openapi.yaml`](../openapi/openapi.yaml) for the
+complete endpoint and schema contract.

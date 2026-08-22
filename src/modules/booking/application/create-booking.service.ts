@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Optional } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { ConcertBookingRepository } from '../../concert/infrastructure/concert-booking.repository';
@@ -16,6 +16,7 @@ import { BookingResponse } from './booking-read.service';
 import { BookingWriteRepository } from '../infrastructure/booking-write.repository';
 import { CreateBookingDto } from '../presentation/dto/create-booking.dto';
 import { IdempotencyRepository } from '../../idempotency/infrastructure/idempotency.repository';
+import { ObservabilityService } from '../../../shared/observability/observability.service';
 import {
   canonicalizeBookingIntent,
   fingerprintBookingIntent,
@@ -42,6 +43,7 @@ export class CreateBookingService {
     private readonly voucherRepository: VoucherReservationRepository,
     private readonly bookingRepository: BookingWriteRepository,
     private readonly idempotencyRepository: IdempotencyRepository,
+    @Optional() private readonly observability?: ObservabilityService,
   ) {}
 
   async execute(
@@ -56,6 +58,7 @@ export class CreateBookingService {
       canonicalizeBookingIntent(userId, concertIdentifier, items, voucherCode),
     );
 
+    this.observability?.recordBookingAttempt(userId);
     return withTransaction(
       this.database,
       async (transaction) => {
@@ -314,7 +317,34 @@ export class CreateBookingService {
         return { booking: response, replayed: false };
       },
       { maxAttempts: 3 },
+    ).then(
+      (result) => {
+        this.observability?.recordBookingOutcome(
+          result.replayed ? 'replayed' : 'success',
+          undefined,
+          {
+            userId,
+            bookingId: result.booking.id,
+          },
+        );
+        return result;
+      },
+      (error: unknown) => {
+        this.observability?.recordBookingOutcome('failure', this.errorCode(error), { userId });
+        throw error;
+      },
     );
+  }
+
+  private errorCode(error: unknown): string {
+    if (error instanceof BusinessException) {
+      const response = error.getResponse();
+      if (typeof response === 'object' && response !== null && 'code' in response) {
+        const code = (response as { code?: unknown }).code;
+        if (typeof code === 'string') return code;
+      }
+    }
+    return 'UNEXPECTED_ERROR';
   }
 
   private normalizeItems(

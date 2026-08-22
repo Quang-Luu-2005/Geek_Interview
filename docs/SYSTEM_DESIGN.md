@@ -98,6 +98,21 @@ consistent queries.
 | Voucher fails after inventory reservation | One transaction covers both mutations | Inventory reservation is rolled back |
 | Database exception mid-flow | Transaction rollback and no success response | No partial booking, resource leak, or replayable false success |
 
+## API resilience and observability boundary
+
+`POST /api/bookings` has a process-local rate-limit guard keyed by verified
+customer identity (or source IP before identity is available). It is a
+resilience layer only: it returns `429` with `Retry-After` during abuse bursts
+and never replaces the PostgreSQL inventory/idempotency correctness rules.
+Admin/operation routes are exempt from this customer flash-sale limit. A
+multi-instance deployment should move the same policy to a shared Redis or API
+gateway limiter.
+
+The HTTP boundary generates/propagates `X-Request-ID`, maps all exceptions to a
+stable `{ code, message, details?, traceId }` contract, and emits structured
+JSON request/business logs. Metrics are intentionally low-cardinality and
+single-process for this assessment; see [`OBSERVABILITY.md`](OBSERVABILITY.md).
+
 ## Current vs future components
 
 Current: REST API, PostgreSQL, modular application modules, and expiry worker.

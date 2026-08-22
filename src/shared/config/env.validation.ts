@@ -10,6 +10,8 @@ export interface Environment {
   DB_USER?: string;
   DB_PASSWORD?: string;
   LOG_LEVEL: string;
+  RATE_LIMIT_BOOKING_MAX: number;
+  RATE_LIMIT_WINDOW_MS: number;
 }
 
 export function validateEnvironment(config: Record<string, unknown>): Environment {
@@ -25,6 +27,8 @@ export function validateEnvironment(config: Record<string, unknown>): Environmen
     DB_USER: Joi.string().optional(),
     DB_PASSWORD: Joi.string().optional(),
     LOG_LEVEL: Joi.string().valid('debug', 'info', 'warn', 'error').default('info'),
+    RATE_LIMIT_BOOKING_MAX: Joi.number().integer().positive().default(60),
+    RATE_LIMIT_WINDOW_MS: Joi.number().integer().positive().default(60_000),
     // ConfigModule validates process.env, which also contains runtime variables
     // supplied by Docker, npm, and the operating system. Validate our contract
     // while ignoring unrelated runtime keys.
