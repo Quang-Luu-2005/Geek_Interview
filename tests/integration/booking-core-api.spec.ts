@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 
 import { AppModule } from '../../src/app/app.module';
@@ -18,6 +19,8 @@ describe('booking core API', () => {
   let concertId: string;
   let vipCategoryId: string;
   let standardCategoryId: string;
+  let idempotencySequence = 0;
+  const idempotencyRunId = randomUUID();
 
   beforeAll(async () => {
     client = new Client({ connectionString: process.env.DATABASE_URL });
@@ -49,6 +52,10 @@ describe('booking core API', () => {
   });
 
   afterAll(async () => {
+    await client.query(
+      `DELETE FROM idempotency_records WHERE user_id = $1 AND idempotency_key LIKE $2`,
+      [userId, `booking-core-${idempotencyRunId}%`],
+    );
     await app.close();
     await client.end();
   });
@@ -181,7 +188,11 @@ describe('booking core API', () => {
   async function postBooking(payload: Record<string, unknown>) {
     const response = await fetch(`${baseUrl}/api/bookings`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-user-id': userId },
+      headers: {
+        'content-type': 'application/json',
+        'x-user-id': userId,
+        'idempotency-key': `booking-core-${idempotencyRunId}-${++idempotencySequence}`,
+      },
       body: JSON.stringify(payload),
     });
     return { response, body: (await response.json()) as ApiResponse };

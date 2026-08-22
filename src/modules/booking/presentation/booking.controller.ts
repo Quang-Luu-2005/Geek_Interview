@@ -1,6 +1,7 @@
-import { Controller, Get, Headers, Param, Post, Query, Body } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query } from '@nestjs/common';
 
 import { requireCustomerUserId } from '../../../shared/http/customer-user';
+import { requireIdempotencyKey } from '../../../shared/http/idempotency-key';
 import { BookingReadService } from '../application/booking-read.service';
 import { CreateBookingService } from '../application/create-booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -17,11 +18,13 @@ export class BookingController {
   create(
     @Body() request: CreateBookingDto,
     @Headers('x-user-id') userIdHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
   ) {
     const userId = requireCustomerUserId(userIdHeader);
+    const idempotencyKey = requireIdempotencyKey(idempotencyKeyHeader);
     return this.createBookingService
-      .execute(userId, request)
-      .then((booking) => ({ data: booking }));
+      .execute(userId, request, idempotencyKey)
+      .then((result) => ({ data: result.booking }));
   }
 
   @Get('me/bookings')

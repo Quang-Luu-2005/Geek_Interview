@@ -15,12 +15,22 @@ import { PrismaService } from '../../../shared/database/prisma.service';
 import { BookingResponse } from './booking-read.service';
 import { BookingWriteRepository } from '../infrastructure/booking-write.repository';
 import { CreateBookingDto } from '../presentation/dto/create-booking.dto';
+import { IdempotencyRepository } from '../../idempotency/infrastructure/idempotency.repository';
+import {
+  canonicalizeBookingIntent,
+  fingerprintBookingIntent,
+} from '../../idempotency/application/request-fingerprint';
 
 const RESERVATION_TTL_MS = 10 * 60 * 1000;
 
 interface NormalizedItem {
   ticketCategoryId: string;
   quantity: number;
+}
+
+export interface CreateBookingResult {
+  booking: BookingResponse;
+  replayed: boolean;
 }
 
 @Injectable()
@@ -31,12 +41,20 @@ export class CreateBookingService {
     private readonly inventoryRepository: InventoryReservationRepository,
     private readonly voucherRepository: VoucherReservationRepository,
     private readonly bookingRepository: BookingWriteRepository,
+    private readonly idempotencyRepository: IdempotencyRepository,
   ) {}
 
-  async execute(userId: string, request: CreateBookingDto): Promise<BookingResponse> {
+  async execute(
+    userId: string,
+    request: CreateBookingDto,
+    idempotencyKey: string,
+  ): Promise<CreateBookingResult> {
     const items = this.normalizeItems(request.items);
     const concertIdentifier = request.concertId.trim();
     const voucherCode = request.voucherCode?.trim().toUpperCase();
+    const requestHash = fingerprintBookingIntent(
+      canonicalizeBookingIntent(userId, concertIdentifier, items, voucherCode),
+    );
 
     return withTransaction(
       this.database,
@@ -46,6 +64,44 @@ export class CreateBookingService {
             'CUSTOMER_NOT_FOUND',
             'Customer identity is not recognized',
             HttpStatus.UNAUTHORIZED,
+          );
+        }
+
+        const claim = await this.idempotencyRepository.claim(
+          transaction,
+          userId,
+          idempotencyKey,
+          requestHash,
+        );
+
+        if (claim.kind === 'existing') {
+          if (claim.record.request_hash !== requestHash) {
+            throw new BusinessException(
+              'IDEMPOTENCY_KEY_REUSED',
+              'Idempotency-Key was already used for a different booking request',
+              HttpStatus.CONFLICT,
+            );
+          }
+
+          if (claim.record.status === 'COMPLETED' && claim.record.response_body) {
+            return {
+              booking: claim.record.response_body as BookingResponse,
+              replayed: true,
+            };
+          }
+
+          if (claim.record.status === 'PROCESSING') {
+            throw new BusinessException(
+              'IDEMPOTENCY_REQUEST_IN_PROGRESS',
+              'The request for this Idempotency-Key is still processing',
+              HttpStatus.CONFLICT,
+            );
+          }
+
+          throw new BusinessException(
+            'IDEMPOTENCY_RESULT_UNAVAILABLE',
+            'The previous idempotent request has no replayable result',
+            HttpStatus.CONFLICT,
           );
         }
 
@@ -195,7 +251,7 @@ export class CreateBookingService {
           );
         }
 
-        return {
+        const response: BookingResponse = {
           id: booking.id,
           bookingCode: booking.booking_code,
           concert: { id: concert.id, slug: concert.slug, name: concert.name },
@@ -216,6 +272,10 @@ export class CreateBookingService {
             lineTotal: item.lineTotal,
           })),
         };
+
+        await this.idempotencyRepository.complete(transaction, claim.record.id, 201, response);
+
+        return { booking: response, replayed: false };
       },
       { maxAttempts: 3 },
     );

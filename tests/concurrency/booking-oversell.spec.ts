@@ -78,7 +78,13 @@ describe('CONC-001 atomic inventory reservation', () => {
       Array.from({ length: 100 }, () =>
         fetch(`${baseUrl}/api/bookings`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-user-id': userId },
+          headers: {
+            'content-type': 'application/json',
+            'x-user-id': userId,
+            // Oversell tests model distinct customer intents; idempotency is
+            // covered separately with one shared key.
+            'idempotency-key': `oversell-${randomUUID()}`,
+          },
           body: JSON.stringify({
             concertId: slug,
             items: [{ ticketCategoryId: categoryId, quantity: 1 }],

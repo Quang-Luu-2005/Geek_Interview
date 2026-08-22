@@ -1,4 +1,4 @@
-# Customer read APIs
+# Customer APIs
 
 These endpoints are the read side of the customer flow implemented in task
 04. The API is mounted below `/api`.
@@ -73,9 +73,11 @@ leaks.
 
 ### `POST /api/bookings`
 
-Requires `x-user-id` and accepts `concertId` as either the concert UUID or
-stable slug. The request contains only category IDs and quantities; price and
-totals are always read and calculated inside the database transaction.
+Requires `x-user-id` and `Idempotency-Key` headers. The key is scoped to the
+authenticated customer, stored with a database uniqueness constraint, and may
+be safely retried after a timeout. `concertId` accepts either the concert UUID
+or stable slug. The request contains only category IDs and quantities; price
+and totals are always read and calculated inside the database transaction.
 
 ```json
 {
@@ -93,6 +95,14 @@ inventory updates, reserves an optional voucher, snapshots prices, inserts the
 booking/items/status history, and commits or rolls back as one unit. New
 reservations are `RESERVED` for 10 minutes.
 
+For the same customer and key, an equivalent request (including a different
+item order or voucher casing) replays the original booking response without
+decrementing inventory or voucher quota again. Reusing the key with a different
+canonical payload returns `409 IDEMPOTENCY_KEY_REUSED`. Concurrent requests with
+the same key wait for the first transaction and replay its committed result;
+the claim is rolled back if the booking transaction fails, so a key cannot be
+left permanently stuck in `PROCESSING` by an application error.
+
 Business rejections use a stable `{ code, message, details? }` body and do not
 become HTTP 500s:
 
@@ -103,6 +113,8 @@ become HTTP 500s:
 | 409 | `INSUFFICIENT_TICKET_INVENTORY` | Conditional decrement affected zero rows |
 | 409 | `VOUCHER_NOT_APPLICABLE` | Voucher is invalid, expired, disabled, or exhausted |
 | 409 | `VOUCHER_ALREADY_REDEEMED` | One-use-per-customer voucher was already used |
+| 409 | `IDEMPOTENCY_KEY_REUSED` | Same key was used with a different request payload |
+| 409 | `IDEMPOTENCY_REQUEST_IN_PROGRESS` | A legacy/stale processing record has no replayable result |
 
 Inventory availability is never checked with a separate SELECT-before-UPDATE
 operation. The affected row from `UPDATE ... WHERE available_quantity >= qty
@@ -112,6 +124,8 @@ rolls back earlier category reservations if a later category or voucher fails.
 ## Postman
 
 Import [`postman/customer-apis.collection.json`](../postman/customer-apis.collection.json)
-and set `baseUrl` (default `http://localhost:3000`) and `customerUserId` to the
-seeded customer UUID. The collection includes browse, detail, categories, own
-history, and booking detail requests.
+and set `baseUrl` (default `http://localhost:3000`), `customerUserId` to the
+seeded customer UUID, `standardCategoryId` to a seeded category UUID, and
+`idempotencyKey` to a fresh value for each logical booking intent. The
+collection includes browse, detail, categories, create booking, own history,
+and booking detail requests.

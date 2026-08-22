@@ -2,8 +2,8 @@
 
 Backend for the 48-hour technical assessment. The repository establishes the
 modular-monolith boundaries, PostgreSQL consistency boundary, reproducible
-migration/seed flow, customer read APIs, and quality gates. The critical write
-booking workflow is intentionally delivered by the next task group.
+migration/seed flow, customer APIs, atomic booking, retry safety, and quality
+gates.
 
 ## Prerequisites
 
