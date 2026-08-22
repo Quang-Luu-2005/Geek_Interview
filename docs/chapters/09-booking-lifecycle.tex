@@ -22,6 +22,12 @@
 \section{Reservation Expiry}
 New bookings have \code{status = RESERVED} and an \code{expires\_at} timestamp. A background worker finds expired reservations, transitions them to \code{EXPIRED}, and restores ticket/voucher resources inside one transaction.
 
+The API exposes conditional \code{confirm} and \code{cancel} commands. A
+confirmation uses \code{status = RESERVED AND expires\_at > NOW()} and keeps
+the resources; cancellation is allowed only from live \code{RESERVED} and releases
+the resources. \code{CONFIRMED}, \code{EXPIRED}, and \code{CANCELLED} are
+terminal in this scope.
+
 \section{Scalable Worker Claiming}
 \begin{lstlisting}[language=SQL,caption={Batch claim for expired reservations}]
 SELECT id
@@ -34,6 +40,10 @@ FOR UPDATE SKIP LOCKED;
 \end{lstlisting}
 
 This pattern allows multiple workers to process disjoint rows without a separate distributed lock service.
+The implementation orders rows by \code{(expires\_at, id)}, limits each batch
+to at most 500 rows, and holds the claim lock until status history and resource
+release commit. A repeat run observes no \code{RESERVED} row and therefore
+cannot decrement inventory or voucher quota twice.
 
 \section{Confirm-vs-Expire Race}
 A confirmation write should be conditional on both the current state and expiry boundary, for example:
@@ -46,4 +56,4 @@ WHERE id = :booking_id
   AND expires_at > NOW();
 \end{lstlisting}
 
-A zero-row result indicates that the booking is no longer eligible for confirmation. This prevents a stale read from confirming a reservation after it has expired.
+A zero-row result indicates that the booking is no longer eligible for confirmation. The boundary is evaluated by PostgreSQL after any row-lock wait, preventing a stale application timestamp from confirming a reservation after it has expired. The competing update therefore produces exactly one terminal outcome.

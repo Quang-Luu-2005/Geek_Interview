@@ -55,6 +55,22 @@
         },
         "url": "{{baseUrl}}/api/bookings"
       }
+    },
+    {
+      "name": "Confirm booking",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
+        "url": "{{baseUrl}}/api/bookings/{{bookingId}}/confirm"
+      }
+    },
+    {
+      "name": "Cancel booking",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
+        "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel"
+      }
     }
   ]
 }

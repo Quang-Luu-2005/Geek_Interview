@@ -68,15 +68,22 @@ return response
 
 ## State machine
 
-The lifecycle is `RESERVED -> CONFIRMED | EXPIRED | CANCELLED`. `CONFIRMED` may
-be cancelled only if the documented product policy allows it. `EXPIRED` and
-`CANCELLED` are terminal for the current scope. See
+The lifecycle is `RESERVED -> CONFIRMED | EXPIRED | CANCELLED`. Confirmation
+requires `expires_at > NOW()` at the conditional write boundary. Customer
+cancellation is allowed only from a live `RESERVED` row; `CONFIRMED`,
+`EXPIRED`, and `CANCELLED` are terminal for the current scope. See
 [`booking-state.mmd`](diagrams/booking-state.mmd).
 
 Every transition is a conditional update that includes the current status. The
 affected-row count is the arbitration result for racing commands; a loser gets
 a stable conflict such as `BOOKING_NOT_CONFIRMABLE` rather than overwriting a
 terminal state.
+
+The expiry worker claims batches with `ORDER BY expires_at, id LIMIT 100 FOR
+UPDATE SKIP LOCKED`. It keeps the claim lock until the status history, inventory
+release, and voucher release commit in the same transaction. `SKIP LOCKED` is
+used only for queue-like worker claiming; customer reads remain ordinary
+consistent queries.
 
 ## Failure and race scenarios
 

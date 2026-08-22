@@ -4,6 +4,7 @@ import { requireCustomerUserId } from '../../../shared/http/customer-user';
 import { requireIdempotencyKey } from '../../../shared/http/idempotency-key';
 import { BookingReadService } from '../application/booking-read.service';
 import { CreateBookingService } from '../application/create-booking.service';
+import { BookingLifecycleService } from '../application/booking-lifecycle.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { PaginationQueryDto } from '../../concert/presentation/dto/pagination-query.dto';
 
@@ -12,6 +13,7 @@ export class BookingController {
   constructor(
     private readonly bookingReadService: BookingReadService,
     private readonly createBookingService: CreateBookingService,
+    private readonly bookingLifecycleService: BookingLifecycleService,
   ) {}
 
   @Post('bookings')
@@ -25,6 +27,22 @@ export class BookingController {
     return this.createBookingService
       .execute(userId, request, idempotencyKey)
       .then((result) => ({ data: result.booking }));
+  }
+
+  @Post('bookings/:id/confirm')
+  confirm(@Param('id') identifier: string, @Headers('x-user-id') userIdHeader: string | undefined) {
+    const userId = requireCustomerUserId(userIdHeader);
+    return this.bookingLifecycleService
+      .confirm(userId, identifier)
+      .then((booking) => ({ data: booking }));
+  }
+
+  @Post('bookings/:id/cancel')
+  cancel(@Param('id') identifier: string, @Headers('x-user-id') userIdHeader: string | undefined) {
+    const userId = requireCustomerUserId(userIdHeader);
+    return this.bookingLifecycleService
+      .cancel(userId, identifier)
+      .then((booking) => ({ data: booking }));
   }
 
   @Get('me/bookings')

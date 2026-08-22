@@ -1,7 +1,7 @@
 # Customer APIs
 
-These endpoints are the read side of the customer flow implemented in task
-04. The API is mounted below `/api`.
+These endpoints cover the customer browse, reservation, and booking lifecycle
+flow. The API is mounted below `/api`.
 
 ## Identity used in the current assessment build
 
@@ -108,6 +108,21 @@ the same key wait for the first transaction and replay its committed result;
 the claim is rolled back if the booking transaction fails, so a key cannot be
 left permanently stuck in `PROCESSING` by an application error.
 
+### `POST /api/bookings/:id/confirm`
+
+Requires `x-user-id`. Confirmation is a conditional transition that succeeds
+only while the owned booking is `RESERVED` and `expires_at > NOW()`. It keeps
+the reserved inventory and marks a reserved voucher redemption `CONSUMED`.
+After the transition the booking is terminal; a retry receives
+`409 BOOKING_NOT_CONFIRMABLE`.
+
+### `POST /api/bookings/:id/cancel`
+
+Requires `x-user-id`. A live `RESERVED` booking may be cancelled while
+`expires_at > NOW()`. Inventory is restored and any reserved voucher quota is
+released atomically, with the redemption retained as `RELEASED` audit history.
+Expired or other terminal bookings cannot be cancelled through this endpoint.
+
 Business rejections use a stable `{ code, message, details? }` body and do not
 become HTTP 500s:
 
@@ -121,6 +136,8 @@ become HTTP 500s:
 | 409 | `VOUCHER_EXPIRED` | Voucher validity window has ended |
 | 409 | `VOUCHER_EXHAUSTED` | Global voucher quota is exhausted |
 | 409 | `VOUCHER_ALREADY_REDEEMED` | One-use-per-customer voucher was already used |
+| 409 | `BOOKING_NOT_CONFIRMABLE` | Booking is expired or already terminal |
+| 409 | `BOOKING_NOT_CANCELLABLE` | Booking is already terminal |
 | 409 | `IDEMPOTENCY_KEY_REUSED` | Same key was used with a different request payload |
 | 409 | `IDEMPOTENCY_REQUEST_IN_PROGRESS` | A legacy/stale processing record has no replayable result |
 
@@ -136,4 +153,6 @@ and set `baseUrl` (default `http://localhost:3000`), `customerUserId` to the
 seeded customer UUID, `standardCategoryId` to a seeded category UUID, and
 `idempotencyKey` to a fresh value for each logical booking intent. The
 collection includes browse, detail, categories, create booking, own history,
-and booking detail requests.
+and booking detail, confirm, and cancel requests. The reservation expiry worker
+polls `RESERVED` rows every 30 seconds by default; set
+`RESERVATION_EXPIRY_WORKER_ENABLED=false` to disable it for a local process.

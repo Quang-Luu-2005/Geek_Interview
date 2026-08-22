@@ -3,9 +3,7 @@ stateDiagram-v2
 
     RESERVED --> CONFIRMED: confirm\n[expires_at > now]
     RESERVED --> EXPIRED: expiry worker\n[expires_at <= now]
-    RESERVED --> CANCELLED: customer/operator cancel\n[policy allows]
-
-    CONFIRMED --> CANCELLED: cancellation\n[only if policy allows]
+    RESERVED --> CANCELLED: customer/operator cancel\n[expires_at > now]
 
     EXPIRED --> [*]
     CANCELLED --> [*]
@@ -13,6 +11,7 @@ stateDiagram-v2
     note right of RESERVED
       Confirm, expire, and cancel use
       conditional UPDATE WHERE status = RESERVED.
+      Confirm also requires expires_at > NOW().
       Exactly one racer changes the row.
     end note
 

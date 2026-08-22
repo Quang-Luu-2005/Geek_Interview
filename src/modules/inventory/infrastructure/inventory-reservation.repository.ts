@@ -51,4 +51,39 @@ export class InventoryReservationRepository {
 
     return rows[0] ?? null;
   }
+
+  /**
+   * Restores every line reserved by a booking. The lifecycle service invokes
+   * this only after the RESERVED -> terminal status update in the same
+   * transaction, so a retry cannot release the same line twice.
+   */
+  async releaseForBooking(transaction: TransactionClient, bookingId: string): Promise<number> {
+    const items = await transaction.$queryRaw<
+      {
+        ticket_category_id: string;
+        quantity: number;
+      }[]
+    >(Prisma.sql`
+      SELECT ticket_category_id::text AS ticket_category_id, quantity
+      FROM booking_items
+      WHERE booking_id = ${bookingId}::uuid
+      ORDER BY ticket_category_id ASC
+    `);
+
+    let released = 0;
+    for (const item of items) {
+      const rows = await transaction.$queryRaw<{ ticket_category_id: string }[]>(Prisma.sql`
+        UPDATE ticket_inventories
+        SET available_quantity = available_quantity + ${item.quantity}, updated_at = NOW()
+        WHERE ticket_category_id = ${item.ticket_category_id}::uuid
+          AND available_quantity + ${item.quantity} <= total_quantity
+        RETURNING ticket_category_id::text AS ticket_category_id
+      `);
+      if (rows.length !== 1) {
+        throw new Error('Inventory release invariant violated');
+      }
+      released += item.quantity;
+    }
+    return released;
+  }
 }

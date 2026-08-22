@@ -14,7 +14,7 @@ For each critical automated test, record the command, environment, commit SHA, a
 CONC-001 & 100 requests / 10 tickets & TODO & 10 success, 90 sold-out, final stock 0 \\
 CONC-002 & 20 same idempotency requests & TODO & One logical booking, one inventory decrement \\
 CONC-003 & 20 users / last voucher & TODO & Exactly one redemption \\
-CONC-004 & Confirm vs expiry race & TODO & One valid final outcome \\
+CONC-004 & Confirm vs expiry race & PASS & Conditional transition plus concurrent SKIP LOCKED worker; one terminal outcome and no double release \\
 INT-001 & Voucher failure rollback & TODO & Ticket inventory restored by transaction rollback \\
 INT-002 & Historical price immutability & TODO & Existing booking unchanged after catalog price update \\
 \bottomrule
