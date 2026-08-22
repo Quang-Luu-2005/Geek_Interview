@@ -1,9 +1,9 @@
 # Concert Ticket Booking Backend
 
-Foundation scaffold for the 48-hour backend technical assessment. The current
-implementation establishes the modular-monolith boundaries, PostgreSQL setup,
-configuration validation, health check, versioned migration/seed flow, and
-quality gates. Business APIs are added by later Trello tasks.
+Backend for the 48-hour technical assessment. The repository establishes the
+modular-monolith boundaries, PostgreSQL consistency boundary, reproducible
+migration/seed flow, customer read APIs, and quality gates. The critical write
+booking workflow is intentionally delivered by the next task group.
 
 ## Prerequisites
 
@@ -24,6 +24,18 @@ npm run start:dev
 
 The health endpoint is `GET http://localhost:3000/health`. It returns `503` when
 the database cannot be reached. The `/api` prefix is reserved for business APIs.
+
+## Customer read APIs
+
+Task 04 implements the published-concert browse/detail flow, ticket category
+price/availability reads, and ownership-scoped booking history/detail. See
+[docs/API_CUSTOMER.md](docs/API_CUSTOMER.md) for response contracts and the
+importable [Postman collection](postman/customer-apis.collection.json).
+
+Until the authentication task adds a real access-token guard, booking reads use
+the seeded customer's UUID in an `x-user-id` header. The SQL query always
+enforces that ownership predicate; an unknown or cross-user booking returns
+`404` to avoid existence leaks.
 
 ## Docker setup
 

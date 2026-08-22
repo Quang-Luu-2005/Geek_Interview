@@ -1,0 +1,42 @@
+{
+  "info": {
+    "name": "Ticket Booking - Customer APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "customerUserId", "value": "" },
+    { "key": "concertId", "value": "summer-festival-2026" },
+    { "key": "bookingId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Browse published concerts",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/concerts?page=1&limit=20" }
+    },
+    {
+      "name": "Concert detail",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/concerts/{{concertId}}" }
+    },
+    {
+      "name": "Ticket categories and availability",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/concerts/{{concertId}}/ticket-categories" }
+    },
+    {
+      "name": "Current user's booking history",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
+        "url": "{{baseUrl}}/api/me/bookings?page=1&limit=20"
+      }
+    },
+    {
+      "name": "Owned booking detail",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
+        "url": "{{baseUrl}}/api/bookings/{{bookingId}}"
+      }
+    }
+  ]
+}
