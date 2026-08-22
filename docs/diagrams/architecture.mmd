@@ -1,0 +1,51 @@
+flowchart LR
+    customer[Customer]
+    operator[Operator]
+
+    subgraph app[Concert Ticket Booking Backend - Modular Monolith]
+        api[REST API\nstateless controllers]
+        worker[Reservation Expiry Worker]
+
+        subgraph modules[Application Modules]
+            concert[Concert Module]
+            booking[Booking Module]
+            inventory[Inventory Module]
+            voucher[Voucher Module]
+            idem[Idempotency Module]
+            operation[Operation Module]
+        end
+
+        shared[Shared infrastructure\nconfig / errors / observability]
+    end
+
+    db[(PostgreSQL\nsource of truth)]
+    redis[(Redis\noptional future cache/rate limit)]
+    future[Future integrations\nemail / analytics / broker]
+
+    customer --> api
+    operator --> api
+    api --> concert
+    api --> booking
+    api --> operation
+    booking --> inventory
+    booking --> voucher
+    booking --> idem
+    concert --> db
+    booking --> db
+    inventory --> db
+    voucher --> db
+    idem --> db
+    operation --> db
+    worker --> booking
+    worker --> db
+    api --> shared
+    worker --> shared
+    api -. optional .-> redis
+    booking -. future outbox .-> future
+
+    classDef current fill:#e8f3ff,stroke:#2563eb,stroke-width:1px;
+    classDef data fill:#fff7ed,stroke:#c2410c,stroke-width:1px;
+    classDef future fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5;
+    class api,worker,concert,booking,inventory,voucher,idem,operation,shared current;
+    class db data;
+    class redis,future future;

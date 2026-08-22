@@ -1,0 +1,57 @@
+sequenceDiagram
+    autonumber
+    actor Customer
+    participant API as REST API
+    participant Idem as Idempotency Module
+    participant Booking as Booking Use Case
+    participant DB as PostgreSQL
+    participant Inventory as Inventory Repository
+    participant Voucher as Voucher Repository
+
+    Customer->>API: POST /bookings + Idempotency-Key
+    API->>API: Parse, authenticate, validate DTO
+    API->>Idem: Compute request fingerprint
+    Idem->>DB: Lookup (user_id, key)
+
+    alt Existing key, same fingerprint and completed
+        DB-->>Idem: Stored response
+        Idem-->>API: Replay original status/body
+        API-->>Customer: Original response
+    else Existing key with different fingerprint
+        DB-->>Idem: Conflicting fingerprint
+        Idem-->>API: IDEMPOTENCY_KEY_REUSED
+        API-->>Customer: 409 Conflict
+    else New logical request
+        Booking->>DB: BEGIN
+        Booking->>Idem: Insert idempotency record (unique scope/key)
+        Idem-->>Booking: Claim succeeds
+        Booking->>DB: Validate published/bookable concert
+        Booking->>Inventory: Reserve categories in sorted order
+        Inventory->>DB: Conditional UPDATE ... WHERE available >= qty
+
+        alt Sold out
+            DB-->>Inventory: 0 rows
+            Booking->>DB: ROLLBACK
+            Booking-->>API: INVENTORY_EXHAUSTED
+            API-->>Customer: 409 Conflict
+        else Voucher supplied
+            Booking->>Voucher: Reserve eligibility and quota
+            Voucher->>DB: Conditional quota update + redemption insert
+            alt Voucher rejected
+                DB-->>Voucher: Ineligible/exhausted
+                Booking->>DB: ROLLBACK inventory and idempotency claim
+                Booking-->>API: VOUCHER_INVALID
+                API-->>Customer: 422 Unprocessable Entity
+            else Voucher accepted
+                Voucher-->>Booking: Discount snapshot
+            end
+        end
+
+        Booking->>DB: Insert booking/items and price snapshots
+        Booking->>Idem: Store response payload
+        Booking->>DB: COMMIT
+        Booking-->>API: Booking response
+        API-->>Customer: 201 Created
+    end
+
+    Note over API,DB: No external network call is made inside the critical transaction.
