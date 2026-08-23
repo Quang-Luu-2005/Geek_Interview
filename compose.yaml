@@ -29,6 +29,8 @@ services:
       DB_USER: ticket
       DB_PASSWORD: ticket
       LOG_LEVEL: info
+      RATE_LIMIT_BOOKING_MAX: ${RATE_LIMIT_BOOKING_MAX:-60}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
     depends_on:
       postgres:
         condition: service_healthy

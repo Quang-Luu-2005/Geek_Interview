@@ -60,5 +60,8 @@ jobs:
       - name: Integration tests
         run: npm run test:integration
 
+      - name: Concurrency tests
+        run: npm run test:concurrency
+
       - name: Build
         run: npm run build

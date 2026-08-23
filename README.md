@@ -96,8 +96,12 @@ npm run test:integration
 npm run test:concurrency
 ```
 
-`npm run test:load` intentionally exits non-zero until the k6 task adds the load
-script and reproducible report.
+`npm run test:load` runs the Task 11 k6 steady/burst scenario. It uses a local
+k6 binary when available and otherwise Docker image `grafana/k6:0.53.0`; set
+`RATE_LIMIT_BOOKING_MAX=1000` for an isolated benchmark API instance. See
+[docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md) and
+[docs/PERFORMANCE_REPORT.md](docs/PERFORMANCE_REPORT.md) for evidence and
+interpretation rules.
 
 ## Repository conventions
 
