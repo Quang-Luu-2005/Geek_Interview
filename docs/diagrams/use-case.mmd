@@ -1,0 +1,80 @@
+flowchart LR
+    customer[Customer]
+    operator[Operator / Admin]
+    scheduler[Expiry Scheduler]
+
+    subgraph system[Concert Ticket Booking System]
+        direction TB
+
+        subgraph customerCases[Customer Use Cases]
+            browse([Browse published concerts])
+            availability([View ticket categories<br/>and availability])
+            create([Create booking])
+            voucher([Apply voucher])
+            retry([Retry booking safely])
+            ownBookings([View own booking history<br/>and booking details])
+            confirm([Confirm reservation])
+            cancel([Cancel reservation])
+        end
+
+        subgraph operationCases[Operations Use Cases]
+            manageBookings([List and inspect bookings])
+            changeStatus([Perform guarded<br/>booking status change])
+            configureConcert([Create concert and<br/>ticket categories])
+            publishConcert([Publish concert])
+            configureVoucher([Create scoped voucher])
+            observe([Inspect health and metrics])
+        end
+
+        subgraph automatedCases[Automated Use Cases]
+            expire([Expire overdue reservations])
+            release([Release inventory and<br/>voucher quota exactly once])
+        end
+
+        validateInventory([Validate concert and<br/>reserve inventory atomically])
+        enforceIdempotency([Claim or replay<br/>idempotency key])
+        lifecycle([Enforce valid lifecycle<br/>transition])
+    end
+
+    customer --> browse
+    customer --> availability
+    customer --> create
+    customer --> voucher
+    customer --> retry
+    customer --> ownBookings
+    customer --> confirm
+    customer --> cancel
+
+    operator --> manageBookings
+    operator --> changeStatus
+    operator --> configureConcert
+    operator --> publishConcert
+    operator --> configureVoucher
+    operator --> observe
+
+    scheduler --> expire
+
+    create -.->|include| validateInventory
+    create -.->|include| enforceIdempotency
+    voucher -.->|extend| create
+    retry -.->|include| enforceIdempotency
+    confirm -.->|include| lifecycle
+    cancel -.->|include| lifecycle
+    changeStatus -.->|include| lifecycle
+    expire -.->|include| lifecycle
+    expire -.->|include| release
+    cancel -.->|include| release
+    changeStatus -.->|include when cancelled| release
+    configureConcert -.->|precedes| publishConcert
+
+    classDef actor fill:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef customerUseCase fill:#e8f3ff,stroke:#2563eb,stroke-width:1px;
+    classDef operationUseCase fill:#f0fdf4,stroke:#15803d,stroke-width:1px;
+    classDef automatedUseCase fill:#fff7ed,stroke:#c2410c,stroke-width:1px;
+    classDef internalUseCase fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5;
+
+    class customer,operator,scheduler actor;
+    class browse,availability,create,voucher,retry,ownBookings,confirm,cancel customerUseCase;
+    class manageBookings,changeStatus,configureConcert,publishConcert,configureVoucher,observe operationUseCase;
+    class expire,release automatedUseCase;
+    class validateInventory,enforceIdempotency,lifecycle internalUseCase;

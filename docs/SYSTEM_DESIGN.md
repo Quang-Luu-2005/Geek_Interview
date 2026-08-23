@@ -15,6 +15,10 @@ Related evidence: [ADR-001 modular monolith](adr/001-use-modular-monolith.md),
 [database design](DATABASE_DESIGN.md), [API contracts](API_CUSTOMER.md), and
 [test/performance evidence](TEST_STRATEGY.md).
 
+The actor-to-capability view is captured in
+[`use-case.mmd`](diagrams/use-case.mmd), covering customer, operator/admin and
+automated reservation-expiry workflows implemented in the current scope.
+
 ## Architecture summary
 
 The system is a modular monolith exposing a stateless REST API. PostgreSQL is
