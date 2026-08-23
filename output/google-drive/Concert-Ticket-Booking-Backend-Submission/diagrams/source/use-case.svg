@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #111827; }
+      .boundary-title { font: 700 20px Arial, sans-serif; fill: #111827; }
+      .actor-label { font: 18px Arial, sans-serif; fill: #111827; text-anchor: middle; }
+      .uc { fill: #fff; stroke: #1f2937; stroke-width: 2; }
+      .uc-text { font: 17px Arial, sans-serif; fill: #111827; text-anchor: middle; dominant-baseline: middle; }
+      .association { fill: none; stroke: #4b5563; stroke-width: 1.6; }
+      .dependency { fill: none; stroke: #1f2937; stroke-width: 1.7; stroke-dasharray: 8 6; marker-end: url(#open-arrow); }
+      .relation-label { font: 15px Arial, sans-serif; font-style: italic; fill: #111827; text-anchor: middle; paint-order: stroke; stroke: #fff; stroke-width: 7px; stroke-linejoin: round; }
+      .actor { fill: none; stroke: #1f2937; stroke-width: 2; }
+    </style>
+    <marker id="open-arrow" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 1 1 L 11 6 L 1 11" fill="none" stroke="#1f2937" stroke-width="1.5"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#fff"/>
+  <text x="800" y="38" class="title" text-anchor="middle">Concert Ticket Booking Platform - Use Case Diagram</text>
+
+  <rect x="300" y="70" width="1255" height="890" rx="5" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+  <text x="928" y="98" class="boundary-title" text-anchor="middle">«Backend Application»</text>
+  <text x="928" y="122" class="boundary-title" text-anchor="middle">Concert Ticket Booking Platform</text>
+
+  <!-- Actors -->
+  <g transform="translate(120 255)">
+    <circle class="actor" cx="0" cy="-35" r="14"/><path class="actor" d="M0 -21 V22 M-25 -6 H25 M0 22 L-23 53 M0 22 L23 53"/>
+    <text x="0" y="78" class="actor-label">Customer</text>
+  </g>
+  <g transform="translate(120 480)">
+    <circle class="actor" cx="0" cy="-35" r="14"/><path class="actor" d="M0 -21 V22 M-25 -6 H25 M0 22 L-23 53 M0 22 L23 53"/>
+    <text x="0" y="78" class="actor-label">Operator</text>
+  </g>
+  <g transform="translate(120 690)">
+    <circle class="actor" cx="0" cy="-35" r="14"/><path class="actor" d="M0 -21 V22 M-25 -6 H25 M0 22 L-23 53 M0 22 L23 53"/>
+    <text x="0" y="78" class="actor-label">Administrator</text>
+  </g>
+  <g transform="translate(120 875)">
+    <circle class="actor" cx="0" cy="-35" r="14"/><path class="actor" d="M0 -21 V22 M-25 -6 H25 M0 22 L-23 53 M0 22 L23 53"/>
+    <text x="0" y="78" class="actor-label">System Worker</text>
+  </g>
+
+  <!-- Actor associations -->
+  <path class="association" d="M145 249 L400 165 M145 249 L400 255 M145 249 L400 345 M145 249 L400 435 M145 249 L400 525 M145 249 L400 615 M145 249 L400 705"/>
+  <path class="association" d="M145 474 L720 175 M145 474 L720 265 M145 474 L720 355"/>
+  <path class="association" d="M145 684 L720 535 M145 684 L720 625 M145 684 L720 715"/>
+  <path class="association" d="M145 869 L400 875"/>
+
+  <!-- Customer use cases -->
+  <ellipse class="uc" cx="520" cy="165" rx="120" ry="34"/><text class="uc-text" x="520" y="165"><tspan x="520" dy="-10">Browse Published</tspan><tspan x="520" dy="21">Concerts</tspan></text>
+  <ellipse class="uc" cx="520" cy="255" rx="120" ry="34"/><text class="uc-text" x="520" y="255"><tspan x="520" dy="-10">View Ticket</tspan><tspan x="520" dy="21">Availability</tspan></text>
+  <ellipse class="uc" cx="520" cy="345" rx="120" ry="34"/><text class="uc-text" x="520" y="345">Create Booking</text>
+  <ellipse class="uc" cx="520" cy="435" rx="120" ry="34"/><text class="uc-text" x="520" y="435">Apply Voucher</text>
+  <ellipse class="uc" cx="520" cy="525" rx="120" ry="34"/><text class="uc-text" x="520" y="525"><tspan x="520" dy="-10">View Own</tspan><tspan x="520" dy="21">Bookings</tspan></text>
+  <ellipse class="uc" cx="520" cy="615" rx="120" ry="34"/><text class="uc-text" x="520" y="615">Confirm Booking</text>
+  <ellipse class="uc" cx="520" cy="705" rx="120" ry="34"/><text class="uc-text" x="520" y="705">Cancel Booking</text>
+  <ellipse class="uc" cx="520" cy="875" rx="120" ry="34"/><text class="uc-text" x="520" y="875"><tspan x="520" dy="-10">Expire Reserved</tspan><tspan x="520" dy="21">Bookings</tspan></text>
+
+  <!-- Operation and administration use cases -->
+  <ellipse class="uc" cx="840" cy="175" rx="120" ry="34"/><text class="uc-text" x="840" y="175">Monitor Bookings</text>
+  <ellipse class="uc" cx="840" cy="265" rx="120" ry="34"/><text class="uc-text" x="840" y="265"><tspan x="840" dy="-10">Inspect Booking</tspan><tspan x="840" dy="21">Details</tspan></text>
+  <ellipse class="uc" cx="840" cy="355" rx="120" ry="34"/><text class="uc-text" x="840" y="355"><tspan x="840" dy="-10">Update Booking</tspan><tspan x="840" dy="21">Status</tspan></text>
+  <ellipse class="uc" cx="840" cy="535" rx="120" ry="34"/><text class="uc-text" x="840" y="535"><tspan x="840" dy="-10">Manage Concerts</tspan><tspan x="840" dy="21">and Categories</tspan></text>
+  <ellipse class="uc" cx="840" cy="625" rx="120" ry="34"/><text class="uc-text" x="840" y="625">Publish Concert</text>
+  <ellipse class="uc" cx="840" cy="715" rx="120" ry="34"/><text class="uc-text" x="840" y="715">Manage Vouchers</text>
+
+  <!-- Included and extended use cases -->
+  <ellipse class="uc" cx="1270" cy="235" rx="125" ry="34"/><text class="uc-text" x="1270" y="235">Check Inventory</text>
+  <ellipse class="uc" cx="1270" cy="335" rx="125" ry="34"/><text class="uc-text" x="1270" y="335">Reserve Inventory</text>
+  <ellipse class="uc" cx="1270" cy="435" rx="125" ry="34"/><text class="uc-text" x="1270" y="435">Validate Voucher</text>
+  <ellipse class="uc" cx="1270" cy="555" rx="125" ry="34"/><text class="uc-text" x="1270" y="555"><tspan x="1270" dy="-10">Validate State</tspan><tspan x="1270" dy="21">Transition</tspan></text>
+  <ellipse class="uc" cx="1270" cy="755" rx="125" ry="34"/><text class="uc-text" x="1270" y="755"><tspan x="1270" dy="-10">Release Reserved</tspan><tspan x="1270" dy="21">Resources</tspan></text>
+
+  <!-- Include and extend dependencies -->
+  <path class="dependency" d="M638 337 L1145 246"/><text class="relation-label" x="1035" y="270">«include»</text>
+  <path class="dependency" d="M640 345 L1144 336"/><text class="relation-label" x="1050" y="325">«include»</text>
+  <path class="dependency" d="M640 435 L1145 435"/><text class="relation-label" x="900" y="424">«include»</text>
+  <path class="dependency" d="M500 401 L500 380"/><text class="relation-label" x="570" y="394">«extend»</text>
+  <path class="dependency" d="M638 712 L1147 758"/><text class="relation-label" x="1070" y="735">«include»</text>
+  <path class="dependency" d="M957 370 L1147 535"/><text class="relation-label" x="1075" y="438">«include»</text>
+  <path class="dependency" d="M640 870 L1145 770"/><text class="relation-label" x="900" y="806">«include»</text>
+</svg>

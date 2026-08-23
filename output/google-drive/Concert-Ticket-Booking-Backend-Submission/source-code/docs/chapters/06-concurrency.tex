@@ -1,0 +1,55 @@
+\section{Why Check-Then-Update Is Unsafe}
+A sequence that first reads \code{available\_quantity} and later updates it can oversell because concurrent transactions may observe the same pre-update value.
+
+\section{Atomic Conditional Inventory Update}
+\begin{lstlisting}[language=SQL,caption={Atomic inventory reservation}]
+UPDATE ticket_inventories
+SET available_quantity = available_quantity - :quantity
+WHERE ticket_category_id = :ticket_category_id
+  AND available_quantity >= :quantity
+RETURNING available_quantity;
+\end{lstlisting}
+
+A returned row means the reservation succeeded. No returned row means there was insufficient inventory. The correctness decision is made by PostgreSQL rather than by a stale application read.
+
+\section{Alternatives Considered}
+\begin{table}[H]
+\centering
+\caption{Inventory concurrency alternatives}
+\begin{tabularx}{\textwidth}{p{0.25\textwidth}p{0.22\textwidth}Y}
+\toprule
+\textbf{Option} & \textbf{Correctness potential} & \textbf{Assessment trade-off} \\
+\midrule
+Application read then update & Unsafe & Race window exists between the read and write \\
+Pessimistic row lock & Correct & Explicit lock/read/write path is longer than the selected one-statement predicate \\
+Optimistic version column & Correct with retry & Adds version/retry policy for a resource naturally guarded by quantity predicate \\
+Atomic conditional update & Correct; selected & PostgreSQL decides against current row state in one statement \\
+Redis distributed lock & Potentially correct with careful failure handling & Creates a second coordination authority and lock-expiry failure modes \\
+Queue serialization & Correct but asynchronous & Adds queue latency/operations and changes synchronous request semantics \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Concurrency Strategy}
+\begin{table}[H]
+\centering
+\caption{Concurrency hazards and controls}
+\begin{tabularx}{\textwidth}{p{0.28\textwidth}Y}
+\toprule
+\textbf{Hazard} & \textbf{Control} \\
+\midrule
+Two customers compete for final ticket & Atomic conditional update \\
+Booking contains multiple categories & Deterministic category order + one DB transaction \\
+Voucher and inventory have different outcomes & Same transaction; any failure rolls back both \\
+Admin/worker changes stale booking state & Conditional status update based on current state \\
+Multiple expiry workers & Row claim with \code{FOR UPDATE SKIP LOCKED} (optional plus point) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Correctness Evidence}
+\code{CONC-001} seeds 10 tickets and launches 100 simultaneous booking
+attempts. The verified result is exactly 10 successful bookings, 90 controlled
+conflicts, final inventory zero, and no negative intermediate/final state. This
+checks persisted bookings and inventory rather than relying only on response
+codes.

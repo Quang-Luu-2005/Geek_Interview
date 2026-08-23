@@ -1,0 +1,370 @@
+openapi: 3.0.3
+info:
+  title: Concert Ticket Booking API
+  version: 0.1.0
+  description: |
+    Booking API for customers and operations. Authentication is intentionally
+    simplified for the assessment: send a seeded user's UUID in x-user-id.
+servers:
+  - url: http://localhost:3000
+tags:
+  - name: Health
+  - name: Concerts
+  - name: Customer bookings
+  - name: Operations
+paths:
+  /health:
+    get:
+      tags: [Health]
+      responses:
+        '200':
+          description: Database health
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /health/live:
+    get:
+      tags: [Health]
+      responses:
+        '200':
+          description: Process liveness (does not query PostgreSQL)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LiveHealth' }
+  /health/ready:
+    get:
+      tags: [Health]
+      responses:
+        '200':
+          description: Database readiness
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /metrics:
+    get:
+      tags: [Health]
+      responses:
+        '200':
+          description: Prometheus text exposition
+          content:
+            text/plain:
+              schema: { type: string }
+  /api/concerts:
+    get:
+      tags: [Concerts]
+      parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/Limit' }]
+      responses:
+        '200': { $ref: '#/components/responses/PaginatedConcerts' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /api/concerts/{id}:
+    get:
+      tags: [Concerts]
+      parameters: [{ $ref: '#/components/parameters/Identifier' }]
+      responses:
+        '200': { $ref: '#/components/responses/Concert' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/concerts/{id}/ticket-categories:
+    get:
+      tags: [Concerts]
+      parameters: [{ $ref: '#/components/parameters/Identifier' }]
+      responses:
+        '200': { $ref: '#/components/responses/ConcertWithCategories' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/me/bookings:
+    get:
+      tags: [Customer bookings]
+      security: [{ UserIdentity: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/UserIdentity' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200': { $ref: '#/components/responses/PaginatedBookings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/bookings:
+    post:
+      tags: [Customer bookings]
+      security: [{ UserIdentity: [], IdempotencyKey: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/UserIdentity' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '#/components/parameters/RequestId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBooking' }
+            example:
+              concertId: summer-festival-2026
+              items: [{ ticketCategoryId: 00000000-0000-0000-0000-000000000000, quantity: 2 }]
+              voucherCode: WELCOME10
+      responses:
+        '201': { $ref: '#/components/responses/Booking' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Conflict (inventory, voucher, idempotency, or booking state)
+          content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/bookings/{id}:
+    get:
+      tags: [Customer bookings]
+      security: [{ UserIdentity: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Identifier' }
+        - { $ref: '#/components/parameters/UserIdentity' }
+      responses:
+        '200': { $ref: '#/components/responses/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/bookings/{id}/confirm:
+    post:
+      tags: [Customer bookings]
+      security: [{ UserIdentity: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Identifier' }
+        - { $ref: '#/components/parameters/UserIdentity' }
+      responses:
+        '200': { $ref: '#/components/responses/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/ApiError' }
+  /api/bookings/{id}/cancel:
+    post:
+      tags: [Customer bookings]
+      security: [{ UserIdentity: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Identifier' }
+        - { $ref: '#/components/parameters/UserIdentity' }
+      responses:
+        '200': { $ref: '#/components/responses/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/ApiError' }
+  /api/admin/bookings:
+    get:
+      tags: [Operations]
+      security: [{ UserIdentity: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/UserIdentity' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { name: status, in: query, schema: { type: string, enum: [RESERVED, CONFIRMED, EXPIRED, CANCELLED] } }
+        - { name: concertId, in: query, schema: { type: string } }
+        - { name: userId, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200': { $ref: '#/components/responses/PaginatedBookings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/admin/bookings/{id}:
+    get:
+      tags: [Operations]
+      security: [{ UserIdentity: [] }]
+      parameters: [{ $ref: '#/components/parameters/Identifier' }, { $ref: '#/components/parameters/UserIdentity' }]
+      responses:
+        '200': { $ref: '#/components/responses/BookingDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/admin/bookings/{id}/status:
+    patch:
+      tags: [Operations]
+      security: [{ UserIdentity: [] }]
+      parameters: [{ $ref: '#/components/parameters/Identifier' }, { $ref: '#/components/parameters/UserIdentity' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, reason]
+              properties:
+                status: { type: string, enum: [CONFIRMED, EXPIRED, CANCELLED] }
+                reason: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        '200': { $ref: '#/components/responses/BookingDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ApiError' }
+  /api/admin/concerts:
+    post:
+      tags: [Operations]
+      security: [{ UserIdentity: [] }]
+      parameters: [{ $ref: '#/components/parameters/UserIdentity' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateConcert' } } }
+      responses:
+        '201': { $ref: '#/components/responses/Concert' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ApiError' }
+  /api/admin/concerts/{id}/ticket-categories:
+    post:
+      tags: [Operations]
+      security: [{ UserIdentity: [] }]
+      parameters: [{ $ref: '#/components/parameters/Identifier' }, { $ref: '#/components/parameters/UserIdentity' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateTicketCategory' } } }
+      responses:
+        '201': { $ref: '#/components/responses/TicketCategory' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ApiError' }
+  /api/admin/concerts/{id}/publish:
+    post:
+      tags: [Operations]
+      security: [{ UserIdentity: [] }]
+      parameters: [{ $ref: '#/components/parameters/Identifier' }, { $ref: '#/components/parameters/UserIdentity' }]
+      responses:
+        '200': { $ref: '#/components/responses/Concert' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ApiError' }
+  /api/admin/vouchers:
+    post:
+      tags: [Operations]
+      security: [{ UserIdentity: [] }]
+      parameters: [{ $ref: '#/components/parameters/UserIdentity' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateVoucher' } } }
+      responses:
+        '201': { $ref: '#/components/responses/Voucher' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ApiError' }
+components:
+  securitySchemes:
+    UserIdentity: { type: apiKey, in: header, name: x-user-id, description: Seeded user UUID (assessment simplification) }
+    IdempotencyKey: { type: apiKey, in: header, name: Idempotency-Key, description: Required and replay-safe for POST /api/bookings }
+  parameters:
+    Identifier: { name: id, in: path, required: true, schema: { type: string }, description: UUID or public identifier }
+    UserIdentity: { name: x-user-id, in: header, required: true, schema: { type: string, format: uuid } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 255 } }
+    RequestId: { name: X-Request-ID, in: header, required: false, schema: { type: string, maxLength: 128 } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message, traceId]
+      properties:
+        code: { type: string, example: VALIDATION_ERROR }
+        message: { type: string, example: Request validation failed }
+        details: { type: object, nullable: true, additionalProperties: true }
+        traceId: { type: string, example: 1f3c8c5e-33e1-4d15-a859-24144d5e8d68 }
+    Health:
+      type: object
+      properties: { status: { type: string }, database: { type: string }, timestamp: { type: string, format: date-time } }
+    LiveHealth:
+      type: object
+      required: [status, service, timestamp]
+      properties: { status: { type: string, example: ok }, service: { type: string, example: ticket-booking-api }, timestamp: { type: string, format: date-time } }
+    CreateBooking:
+      type: object
+      required: [concertId, items]
+      properties:
+        concertId: { type: string }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            type: object
+            required: [ticketCategoryId, quantity]
+            properties:
+              ticketCategoryId: { type: string, format: uuid }
+              quantity: { type: integer, minimum: 1, maximum: 10 }
+        voucherCode: { type: string, maxLength: 100 }
+    Booking:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/BookingData' }
+    BookingData:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        bookingCode: { type: string }
+        status: { type: string, enum: [RESERVED, CONFIRMED, EXPIRED, CANCELLED] }
+        subtotal: { type: string, example: '100.00' }
+        discountAmount: { type: string, example: '0.00' }
+        finalAmount: { type: string, example: '100.00' }
+        expiresAt: { type: string, format: date-time }
+        items: { type: array, items: { type: object, additionalProperties: true } }
+    BookingDetail:
+      allOf:
+        - $ref: '#/components/schemas/Booking'
+    PaginatedBookings:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/BookingData' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    Concert:
+      type: object
+      properties:
+        data: { type: object, additionalProperties: true }
+    ConcertWithCategories:
+      type: object
+      additionalProperties: true
+    PaginatedConcerts:
+      type: object
+      properties:
+        data: { type: array, items: { type: object, additionalProperties: true } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    Pagination:
+      type: object
+      properties: { page: { type: integer }, limit: { type: integer }, total: { type: integer }, totalPages: { type: integer } }
+    CreateConcert:
+      type: object
+      required: [slug, name, startsAt]
+      properties: { slug: { type: string }, name: { type: string }, startsAt: { type: string, format: date-time } }
+    CreateTicketCategory:
+      type: object
+      required: [code, name, price, totalQuantity]
+      properties: { code: { type: string }, name: { type: string }, price: { type: number }, totalQuantity: { type: integer } }
+    TicketCategory:
+      type: object
+      properties: { data: { type: object, additionalProperties: true } }
+    CreateVoucher:
+      type: object
+      required: [code, discountType, discountValue, usageLimit, startsAt, expiresAt]
+      properties:
+        code: { type: string }
+        discountType: { type: string, enum: [PERCENT, FIXED] }
+        discountValue: { type: number }
+        usageLimit: { type: integer }
+        startsAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        applicableConcertId: { type: string, format: uuid }
+        applicableTicketCategoryId: { type: string, format: uuid }
+    Voucher:
+      type: object
+      properties: { data: { type: object, additionalProperties: true } }
+  responses:
+    Concert: { description: Published concert, content: { application/json: { schema: { $ref: '#/components/schemas/Concert' } } } }
+    ConcertWithCategories: { description: Published concert with categories, content: { application/json: { schema: { $ref: '#/components/schemas/ConcertWithCategories' } } } }
+    PaginatedConcerts: { description: Paginated published concerts, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedConcerts' } } } }
+    Booking: { description: Customer booking, content: { application/json: { schema: { $ref: '#/components/schemas/Booking' } } } }
+    BookingDetail: { description: Booking detail with operational metadata, content: { application/json: { schema: { $ref: '#/components/schemas/BookingDetail' } } } }
+    PaginatedBookings: { description: Paginated bookings, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedBookings' } } } }
+    TicketCategory: { description: Ticket category, content: { application/json: { schema: { $ref: '#/components/schemas/TicketCategory' } } } }
+    Voucher: { description: Voucher, content: { application/json: { schema: { $ref: '#/components/schemas/Voucher' } } } }
+    ApiError: { description: Standard API error, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    ValidationError: { description: Validation error, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Unauthorized: { description: Authentication required, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Forbidden: { description: Role or ownership check failed, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    NotFound: { description: Resource not found, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    RateLimited:
+      description: Booking rate limit exceeded
+      headers: { Retry-After: { schema: { type: integer }, description: Seconds before retrying } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    ServiceUnavailable: { description: Dependency unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }

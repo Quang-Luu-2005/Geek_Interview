@@ -1,0 +1,101 @@
+\label{ch:payment-scope}
+\section{Current Assessment Decision}
+\begin{decisionbox}[Real payment processing is intentionally not implemented]
+The submitted backend focuses on finite ticket inventory, retry safety,
+voucher consistency, booking lifecycle, and flash-sale behavior. A newly
+created booking is a time-limited reservation. Confirmation is simulated
+through the owned customer command or an authorized operation workflow; it does
+not prove card, bank, wallet, or provider settlement.
+\end{decisionbox}
+
+Adding a provider SDK would introduce network failure, webhook authentication,
+settlement, refunds, reconciliation, and sensitive-data concerns without
+materially strengthening evidence for the assessment's core correctness risks.
+The omission is therefore a deliberate scope decision, not an accidental gap.
+
+\section{Implemented Payment-Adjacent Behavior}
+The current code supports the parts of booking lifecycle that a later payment
+orchestration module would depend on:
+\begin{itemize}
+  \item create a ten-minute \code{RESERVED} booking and atomically hold tickets and optional voucher capacity;
+  \item persist booking state, immutable totals, expiry time, and audit history;
+  \item conditionally transition a live \code{RESERVED} booking to \code{CONFIRMED};
+  \item expire or cancel a reservation and release finite resources exactly once;
+  \item reject a terminal-state race with a stable conflict;
+  \item apply idempotency to booking creation.
+\end{itemize}
+
+\section{Explicitly Not Implemented}
+There is no external payment-provider client, payment session, authorization or
+capture, card/wallet/bank handling, provider webhook verification, payment
+status table, settlement, refund, chargeback, reconciliation, PCI-DSS card-data
+handling, or payment-specific idempotency workflow. The backend cannot accept
+or verify real customer payments.
+
+\section{Why Production Uses an External Gateway}
+A production system normally delegates sensitive payment execution to a
+specialized external gateway. The backend still owns payment orchestration,
+the booking/payment association, persisted payment state, verified and
+idempotent callback processing, booking transitions, expiry rules, and
+reconciliation jobs. The provider owns the customer payment interaction and
+regulated processing surface.
+
+Figure~\ref{fig:future-payment-flow} is an evolution model only; none of its
+dashed provider interactions exists in the submitted code.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=0.95cm,
+  current/.style={draw=Primary,rounded corners,fill=SoftBlue,minimum width=10cm,minimum height=0.70cm,align=center},
+  future/.style={draw=gray,rounded corners,fill=SoftGray,dashed,minimum width=10cm,minimum height=0.70cm,align=center},
+  arrow/.style={-{Latex[length=2mm]},thick,draw=Primary},
+  futurearrow/.style={-{Latex[length=2mm]},thick,dashed,draw=gray}
+]
+\node[current] (reserve) {Transaction 1: reserve resources and commit RESERVED booking};
+\node[future,below=of reserve] (session) {Future: request hosted payment session after commit};
+\node[future,below=of session] (customerpay) {Future: customer completes payment at external gateway};
+\node[future,below=of customerpay] (webhook) {Future: verify and idempotently persist provider webhook};
+\node[current,below=of webhook] (confirm) {Transaction 2: conditionally transition live RESERVED to CONFIRMED};
+\draw[futurearrow] (reserve) -- (session);
+\draw[futurearrow] (session) -- (customerpay);
+\draw[futurearrow] (customerpay) -- (webhook);
+\draw[futurearrow] (webhook) -- (confirm);
+\end{tikzpicture}
+\caption{Future external payment flow (not implemented)}
+\label{fig:future-payment-flow}
+\end{figure}
+
+If payment completes after expiry wins, the backend must not resurrect the
+terminal booking. A production policy would record the late provider result
+and start a refund/compensation or manual reconciliation path.
+
+\section{Transaction Design Rule}
+The ticket reservation transaction must never remain open while waiting on a
+provider network call. External systems cannot participate in the same local
+ACID transaction; holding row locks across network latency amplifies hot-row
+contention and makes provider timeouts database failures.
+
+\begin{table}[H]
+\centering
+\caption{Payment transaction boundary}
+\begin{tabularx}{\textwidth}{p{0.20\textwidth}YY}
+\toprule
+\textbf{Phase} & \textbf{Preferred} & \textbf{Avoid} \\
+\midrule
+Reservation & Reserve inventory, create \code{RESERVED}, commit & Keep transaction open while calling provider \\
+Provider interaction & Occur after commit with its own timeout/idempotency & Treat network response as part of local ACID \\
+Result handling & Verify callback; begin a new transaction; conditionally confirm & Blindly overwrite an expired/cancelled booking \\
+Failure recovery & TTL release plus reconciliation/compensation & Indefinite resource hold or untracked dual write \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Limitation and Evolution Statement}
+The implementation does not address webhook signature/replay security,
+provider outage and retry policy, settlement mismatch, refund/chargeback
+workflow, or financial reconciliation. A production evolution should add a
+separate payment orchestration module and payment-attempt model, provider
+adapter, verified idempotent webhook inbox, explicit payment state machine,
+transactional outbox for side effects, reconciliation jobs, and operational
+alerts---without changing PostgreSQL's authority over booking state.

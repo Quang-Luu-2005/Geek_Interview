@@ -1,0 +1,48 @@
+sequenceDiagram
+    autonumber
+    actor Customer
+    participant API as REST API
+    participant Booking as Booking Service
+    participant DB as PostgreSQL
+
+    Customer->>API: POST /bookings + Idempotency-Key
+    API->>API: Authenticate, validate, normalize, fingerprint
+    API->>DB: Lookup (user_id, key)
+
+    alt Existing key, same fingerprint, completed
+        DB-->>API: Stored status and response
+        API-->>Customer: Replay original result
+    else Existing key, different fingerprint
+        DB-->>API: Conflicting fingerprint
+        API-->>Customer: 409 IDEMPOTENCY_KEY_REUSED
+    else New logical request
+        API->>Booking: Execute create booking
+        Booking->>DB: BEGIN + claim idempotency key
+        Booking->>DB: Validate concert and categories
+        Booking->>DB: Reserve inventory in sorted order (conditional UPDATE)
+
+        alt Sold out
+            DB-->>Booking: 0 rows updated
+            Booking->>DB: ROLLBACK
+            Booking-->>API: INSUFFICIENT_TICKET_INVENTORY
+            API-->>Customer: 409 Conflict
+        else Inventory reserved
+            opt Voucher supplied
+                Booking->>DB: Validate scope and reserve quota/redemption
+                alt Voucher rejected
+                    DB-->>Booking: Ineligible or exhausted
+                    Booking->>DB: ROLLBACK inventory and idempotency claim
+                    Booking-->>API: VOUCHER_INVALID
+                    API-->>Customer: 422 Unprocessable Entity
+                else Voucher accepted
+                    DB-->>Booking: Discount snapshot
+                end
+            end
+            Booking->>DB: Insert booking, items, prices, history, replay result
+            Booking->>DB: COMMIT
+            Booking-->>API: Booking response
+            API-->>Customer: 201 Created
+        end
+    end
+
+    Note over Booking,DB: No external network call occurs inside the transaction.

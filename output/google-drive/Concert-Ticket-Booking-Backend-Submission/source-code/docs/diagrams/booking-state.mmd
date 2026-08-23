@@ -1,0 +1,11 @@
+stateDiagram-v2
+    direction LR
+    [*] --> RESERVED: booking created / resources reserved
+
+    RESERVED --> CONFIRMED: confirm [expires_at > now]
+    RESERVED --> EXPIRED: worker [expires_at <= now] / release once
+    RESERVED --> CANCELLED: cancel [live reservation] / release once
+
+    CONFIRMED --> [*]
+    EXPIRED --> [*]
+    CANCELLED --> [*]

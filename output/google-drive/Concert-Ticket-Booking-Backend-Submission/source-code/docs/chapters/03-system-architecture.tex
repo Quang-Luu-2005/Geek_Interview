@@ -1,0 +1,92 @@
+\section{Architecture Goals}
+The architecture must keep correctness-sensitive transactions short and
+understandable, preserve strong consistency for finite resources, support the
+stated workload without speculative infrastructure, remain maintainable and
+testable, reproduce locally, and expose explicit evolution seams.
+
+\section{System Context}
+Figure~\ref{fig:system-context} shows only the submitted system. PostgreSQL is
+the sole external consistency service; payment and notification providers are
+kept out of the current architecture.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.52\textwidth,height=0.34\textheight,keepaspectratio]{figures/system-context.pdf}
+\caption{Current-scope system context}
+\label{fig:system-context}
+\end{figure}
+
+\section{Selected Architecture: Modular Monolith and PostgreSQL}
+\begin{decisionbox}[Use a modular monolith for the assessment]
+Booking, inventory, voucher, and idempotency require strong transactional
+coordination. Keeping these modules in one deployable process and one database
+avoids distributed transactions while retaining explicit domain boundaries.
+The stateless API can still be replicated horizontally when measured demand
+requires it.
+\end{decisionbox}
+
+This selection is proportional to the stated 5--8.3 booking requests per
+second. Microservices would add network failure modes, service discovery,
+cross-service retry semantics, and distributed coordination without improving
+the finite-resource guarantees demonstrated by this submission.
+
+\section{Component and Module Architecture}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.66\textheight,keepaspectratio]{figures/architecture.pdf}
+\caption{Modular-monolith component view}
+\label{fig:architecture}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Logical modules and responsibilities}
+\begin{tabularx}{\textwidth}{p{0.20\textwidth}Y}
+\toprule
+\textbf{Module} & \textbf{Responsibility} \\
+\midrule
+Concert & Published catalog, categories, prices, and informational availability \\
+Inventory & Atomic ticket reservation and exactly-once release primitives \\
+Booking & Aggregate creation/read, server pricing, transaction orchestration, and lifecycle \\
+Voucher & Eligibility, scope, discount policy, quota reservation/consume/release \\
+Idempotency & Request fingerprint, user/key claim, conflict, and response replay \\
+Operation & Elevated booking queries, guarded manual transitions, concert/category/voucher creation \\
+Expiry Worker & Batch claim of overdue reservations and transactional resource release \\
+Shared & Configuration, database/transaction helpers, validation, errors, rate limit, and observability \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The dependency direction is \code{Controller -> Application/Use Case -> Domain
+and Repository ports -> Infrastructure}. Controllers translate HTTP concerns;
+they do not own business transactions.
+
+\section{Why PostgreSQL Is the Consistency Boundary}
+Ticket inventory, voucher quota, booking state, audit history, and idempotency
+records are relational and participate in the same business outcomes.
+PostgreSQL conditional writes, row locks, constraints, and ACID rollback make it
+the natural arbiter. Redis may later support a shared limiter/cache, but it is
+not authoritative inventory and no Redis lock is needed for correctness.
+
+\section{Alternatives and Trade-offs}
+\begin{table}[H]
+\centering
+\caption{Architecture alternatives considered}
+\begin{tabularx}{\textwidth}{p{0.26\textwidth}p{0.28\textwidth}Y}
+\toprule
+\textbf{Decision point} & \textbf{Alternative} & \textbf{Reason not selected now} \\
+\midrule
+Deployment boundary & Microservices & Cross-service consistency and operational overhead exceed the assessment need \\
+Inventory coordination & Redis distributed lock & Adds a second failure/authority system around data already owned by PostgreSQL \\
+Critical workflow & Eventual event-driven reservation & Cannot provide the same simple all-or-nothing booking result without larger saga semantics \\
+Expiry processing & Broker-delivered delayed messages & Reliable broker scheduling is useful at scale but unnecessary for the current bounded polling workload \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Evolution Triggers}
+Scale stateless API replicas after measuring database contention. Multiple
+expiry workers already coordinate through \code{FOR UPDATE SKIP LOCKED}. A
+transactional outbox becomes relevant only when a real post-commit consumer
+exists; hot-row admission control or partitioning requires measured lock-wait
+evidence. Chapter~\ref{ch:payment-scope} summarizes revisit triggers.

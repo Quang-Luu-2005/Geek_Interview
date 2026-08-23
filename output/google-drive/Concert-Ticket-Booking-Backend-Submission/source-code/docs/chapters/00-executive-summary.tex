@@ -1,0 +1,30 @@
+The Concert Ticket Booking Platform serves customer reservation flows and
+internal operation workflows. Its principal risks are not raw CRUD complexity
+but contention over finite ticket inventory and voucher quota, duplicate
+bookings caused by network retries, invalid lifecycle transitions, and burst
+traffic during flash sales.
+
+The submitted solution is a \textbf{modular monolith} exposing a stateless REST
+API on Node.js 22 and NestJS, with PostgreSQL 16 as the source of truth and
+consistency boundary. Booking, inventory, voucher, idempotency, operation, and
+expiry-worker responsibilities remain logically separated while sharing one
+local ACID transaction where correctness requires coordination. Docker Compose,
+versioned SQL migrations, deterministic seed data, OpenAPI, and Postman assets
+make the solution reproducible.
+
+The critical booking path uses conditional inventory updates, deterministic
+resource ordering, database-backed idempotency with request fingerprints,
+atomic voucher quota reservation, server-side price calculation, immutable
+price snapshots, and a ten-minute \code{RESERVED} TTL. A polling worker claims
+expired rows with \code{FOR UPDATE SKIP LOCKED}; confirmation, cancellation,
+manual operation changes, and expiry all use conditional lifecycle writes so
+only one competing terminal transition can win.
+
+The scope intentionally excludes real payment processing, seat-level
+selection, refunds, notifications, full catalog/voucher CRUD, and multi-region
+deployment. Confirmation is simulated or performed through an authorized
+current workflow. A future external payment provider would be called only
+after the reservation transaction commits; verified callbacks would drive an
+idempotent \code{RESERVED -> CONFIRMED} transition. These boundaries keep the
+assessment focused on demonstrable booking correctness without presenting
+future infrastructure as already implemented.

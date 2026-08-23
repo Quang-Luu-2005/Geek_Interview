@@ -1,0 +1,16 @@
+flowchart TB
+    customer[Customer]
+    operations[Operator / Administrator]
+    backend[Concert Ticket Booking Backend<br/>REST API + Expiry Worker]
+    database[(PostgreSQL<br/>System of Record)]
+
+    customer -->|browse, reserve, confirm, cancel| backend
+    operations -->|monitor and guarded administration| backend
+    backend -->|ACID transactions and queries| database
+
+    classDef actor fill:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef current fill:#e8f3ff,stroke:#2563eb,stroke-width:2px;
+    classDef data fill:#fff7ed,stroke:#c2410c,stroke-width:2px;
+    class customer,operations actor;
+    class backend current;
+    class database data;

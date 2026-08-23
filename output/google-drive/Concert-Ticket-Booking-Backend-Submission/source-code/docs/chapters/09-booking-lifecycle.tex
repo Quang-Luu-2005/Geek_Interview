@@ -1,0 +1,82 @@
+\section{State Model}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.36\textheight,keepaspectratio]{figures/booking-state.pdf}
+\caption{Implemented booking lifecycle}
+\label{fig:booking-state}
+\end{figure}
+
+Every terminal update requires the current state \code{RESERVED}; exactly one
+competing confirm, cancel, or expiry transition can change the row.
+
+\begingroup
+\renewcommand{\arraystretch}{1.28}
+\begin{table}[H]
+\centering
+\small
+\caption{Allowed lifecycle transitions}
+\begin{tabularx}{\textwidth}{p{0.18\textwidth}p{0.18\textwidth}p{0.16\textwidth}Y}
+\toprule
+\textbf{From} & \textbf{To} & \textbf{Allowed} & \textbf{Guard / effect} \\
+\midrule
+RESERVED & CONFIRMED & Yes & Must still be live; resources remain consumed \\
+RESERVED & CANCELLED & Yes & Customer requires live reservation; release resources once \\
+RESERVED & EXPIRED & Yes & Must be past expiry; release resources once \\
+CONFIRMED & Any state & No & Terminal in current scope \\
+EXPIRED & Any state & No & Terminal in current scope \\
+CANCELLED & Any state & No & Terminal in current scope \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\endgroup
+
+\section{Why Reservation TTL Exists}
+Atomic creation prevents immediate overselling, but a reservation that never
+confirms must not hold finite resources forever. New bookings therefore store
+\code{status = RESERVED} and a configurable \code{expires\_at} (ten minutes by
+default). TTL separates a short reservation transaction from later confirmation
+and bounds abandoned capacity.
+
+\section{Expiry Worker}
+The worker wakes every 30 seconds by default, prevents overlapping ticks in one
+process, requests a default batch of 100, and delegates one transactional batch
+to the lifecycle service. The service clamps externally supplied batch sizes to
+1--500. Figure~\ref{fig:expiry-worker-sequence} shows the implemented flow.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.93\textwidth,height=0.76\textheight,keepaspectratio]{figures/expiry-worker-sequence.pdf}
+\caption{Reservation expiry worker sequence and transaction boundary}
+\label{fig:expiry-worker-sequence}
+\end{figure}
+
+\section{Scalable Worker Claiming}
+\begin{lstlisting}[language=SQL,caption={Disjoint batch claim for expired reservations}]
+SELECT id
+FROM bookings
+WHERE status = 'RESERVED'
+  AND expires_at <= NOW()
+ORDER BY expires_at, id
+LIMIT :safe_limit
+FOR UPDATE SKIP LOCKED;
+\end{lstlisting}
+
+Multiple workers claim disjoint rows without a distributed lock. Each claim
+lock is held until the conditional status update, ticket restoration, reserved
+voucher release, and audit insert commit. A repeat run cannot find the row as
+\code{RESERVED} and therefore cannot release resources twice.
+
+\section{Confirm-vs-Expire Race}
+\begin{lstlisting}[language=SQL,caption={Conditional confirmation}]
+UPDATE bookings
+SET status = 'CONFIRMED', updated_at = NOW()
+WHERE id = :booking_id
+  AND status = 'RESERVED'
+  AND expires_at > NOW();
+\end{lstlisting}
+
+The expiry and confirmation paths both require \code{status = RESERVED}; the
+database row update is the arbitration point. The expiry/time predicate is
+evaluated after any lock wait, so stale application time cannot confirm an
+already-expired reservation. \code{CONC-004} proves one terminal outcome and a
+resource state consistent with that winner.

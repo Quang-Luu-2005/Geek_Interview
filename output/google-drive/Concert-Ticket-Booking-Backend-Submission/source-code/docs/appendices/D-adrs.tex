@@ -1,0 +1,33 @@
+\section{ADR-001 --- Modular Monolith}
+\textbf{Status:} Accepted\\
+\textbf{Context:} The critical booking path needs atomic consistency across inventory, voucher, and booking state.\\
+\textbf{Decision:} Use a modular monolith for the assessment.\\
+\textbf{Alternatives:} Microservices.\\
+\textbf{Consequences:} Simpler transactions and local setup; lower independent-service scalability and deployment autonomy.
+
+\section{ADR-002 --- PostgreSQL for Inventory Consistency}
+\textbf{Status:} Accepted\\
+\textbf{Decision:} Use atomic conditional SQL updates and DB constraints rather than an external distributed lock as the primary correctness mechanism.\\
+\textbf{Consequence:} Hot inventory rows may become contention points, but the failure model remains simple and explicit.
+
+\section{ADR-003 --- Atomic Conditional Inventory Update}
+\textbf{Status:} Accepted\\
+\textbf{Decision:} Reserve inventory with one \code{UPDATE ... WHERE available\_quantity >= quantity RETURNING} statement inside the booking transaction.\\
+\textbf{Alternatives:} Read-then-update, explicit row lock, optimistic versioning, Redis lock, queue serialization.\\
+\textbf{Consequence:} PostgreSQL remains authoritative and oversell is prevented; highly demanded rows may contend.
+
+\section{ADR-004 --- Idempotent Booking API}
+\textbf{Status:} Accepted\\
+\textbf{Decision:} Scope the idempotency key by customer, persist the request fingerprint and original result, and replay the same logical booking.\\
+\textbf{Alternatives:} Process-local memory or cache-only deduplication.\\
+\textbf{Consequence:} Correctness survives process restarts; idempotency records need a retention policy.
+
+\section{ADR-005 --- Database-Polling Expiry Worker}
+\textbf{Status:} Accepted\\
+\textbf{Decision:} Process expired reservations in batches with \code{FOR UPDATE SKIP LOCKED}; release inventory and voucher quota in the same transaction.\\
+\textbf{Consequence:} Expiration timing is bounded by poll interval rather than instantaneous.
+
+\section{ADR-006 --- Transactional Outbox (Optional)}
+\textbf{Status:} Proposed / Optional\\
+\textbf{Decision:} If asynchronous integrations are implemented, write domain events to an outbox in the same business transaction.\\
+\textbf{Consequence:} Adds outbox storage and a worker, but avoids DB+broker dual-write inconsistency.

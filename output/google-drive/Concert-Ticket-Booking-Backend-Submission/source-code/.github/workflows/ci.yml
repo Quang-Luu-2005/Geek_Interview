@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://ticket:ticket@localhost:5432/ticket_booking
+      NODE_ENV: test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ticket_booking
+          POSTGRES_USER: ticket
+          POSTGRES_PASSWORD: ticket
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ticket -d ticket_booking"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Apply migration
+        run: npm run db:migrate
+
+      - name: Seed database
+        run: npm run db:seed
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Concurrency tests
+        run: npm run test:concurrency
+
+      - name: Build
+        run: npm run build
+
+      - name: Start API for contract smoke
+        run: |
+          RESERVATION_EXPIRY_WORKER_ENABLED=false LOG_LEVEL=error npm run start:prod > /tmp/ticket-api.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/health/ready > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/ticket-api.log
+          exit 1
+
+      - name: Newman customer API smoke
+        run: npm run test:postman
+
+      - name: Submission verifier
+        run: npm run verify:submission
+
+      - name: Delivery verifier
+        run: npm run verify:delivery
+
+      - name: Write CI evidence manifest
+        if: always()
+        run: |
+          mkdir -p test-results
+          {
+            echo "commit: ${GITHUB_SHA}"
+            echo "workflow: ${GITHUB_WORKFLOW}"
+            echo "run: ${GITHUB_RUN_ID}"
+            echo "checks: format lint typecheck unit integration concurrency build newman-smoke submission-verifier delivery-verifier"
+          } > test-results/ci-summary.txt
+
+      - name: Upload reviewer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reviewer-evidence
+          path: |
+            test-results/**
+            docs/PERFORMANCE_REPORT.md
+            docs/WOW_PLUS_POINTS.md
+          if-no-files-found: ignore

@@ -1,0 +1,30 @@
+Concert Ticket Booking Backend - Concurrency Evidence
+=====================================================
+
+CONC-001 - Oversell prevention
+Scenario: 100 concurrent booking attempts compete for 10 tickets.
+Verified result: exactly 10 bookings succeed; 90 requests receive controlled
+conflicts; final inventory is 0 and never negative.
+Test: source-code/tests/concurrency/booking-oversell.spec.ts
+
+CONC-002 - Idempotent concurrent retry
+Scenario: 20 concurrent requests use the same customer, idempotency key, and
+payload.
+Verified result: exactly one logical booking exists, inventory is decremented
+once, and retries replay the stable result.
+Test: source-code/tests/concurrency/booking-idempotency.spec.ts
+
+CONC-003 - Final voucher quota
+Scenario: 20 users compete for the last remaining voucher unit.
+Verified result: exactly one valid redemption succeeds and the global quota is
+never exceeded.
+Test: source-code/tests/concurrency/voucher-quota.spec.ts
+
+CONC-004 - Confirm versus expiry
+Scenario: confirmation and the expiry worker race on one RESERVED booking.
+Verified result: exactly one valid terminal outcome wins; inventory and voucher
+resources are not released twice.
+Test: source-code/tests/concurrency/booking-expiry.spec.ts
+
+Reproduce with: npm run test:concurrency
+

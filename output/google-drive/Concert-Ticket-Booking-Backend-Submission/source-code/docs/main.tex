@@ -1,0 +1,65 @@
+\documentclass[a4paper,12pt,oneside]{report}
+
+\input{config/preamble}
+\input{config/commands}
+
+\begin{document}
+
+\pagenumbering{roman}
+\input{config/titlepage}
+
+\setcounter{tocdepth}{0}
+\tableofcontents
+\clearpage
+
+\pagenumbering{arabic}
+
+\chapter{Executive Summary}
+\input{chapters/00-executive-summary}
+
+\chapter{Requirements and Engineering Risks}
+\input{chapters/01-problem-analysis}
+
+\chapter{Scope, Assumptions, Business Rules, and Invariants}
+\input{chapters/02-scope-assumptions-invariants}
+
+\chapter{System Architecture}
+\input{chapters/03-system-architecture}
+
+\chapter{Database Design}
+\input{chapters/04-database-design}
+
+\chapter{Booking Workflow and Transaction Boundary}
+\input{chapters/05-booking-workflow}
+
+\chapter{Concurrency and Overselling Prevention}
+\input{chapters/06-concurrency}
+
+\chapter{Idempotency and Retry Safety}
+\input{chapters/07-idempotency}
+
+\chapter{Voucher and Promotion Consistency}
+\input{chapters/08-voucher}
+
+\chapter{Booking Lifecycle and Reservation Expiry}
+\input{chapters/09-booking-lifecycle}
+
+\chapter{API and Operation Workflows}
+\input{chapters/10-api-operation}
+
+\chapter{Security, Reliability, and Observability}
+\input{chapters/11-security-observability}
+
+\chapter{Testing Strategy and Correctness Evidence}
+\input{chapters/12-testing}
+
+\chapter{Performance and Flash-Sale Analysis}
+\input{chapters/13-performance}
+
+\chapter{Scope, Limitations, and Future Evolution}
+\input{chapters/15-limitations}
+
+\chapter{Conclusion}
+\input{chapters/16-conclusion}
+
+\end{document}

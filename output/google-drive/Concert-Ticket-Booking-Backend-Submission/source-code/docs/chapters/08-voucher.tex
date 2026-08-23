@@ -1,0 +1,51 @@
+\section{Voucher Validation}
+Voucher validation includes status, validity window, optional concert/category
+scope, remaining global quota, and one-use-per-user policy. A global voucher
+has NULL scope columns; a scoped voucher must match the booking concert and at
+least one requested category. The server calculates the discount; the client
+cannot submit an authoritative discount amount.
+
+\section{Atomic Global Quota Update}
+\begin{lstlisting}[language=SQL,caption={Atomic voucher quota reservation}]
+UPDATE vouchers
+SET used_count = used_count + 1
+WHERE id = :voucher_id
+  AND status = 'ACTIVE'
+  AND starts_at <= NOW()
+  AND expires_at > NOW()
+  AND used_count < usage_limit
+RETURNING used_count;
+\end{lstlisting}
+
+The conditional update and redemption insert occur inside the same transaction
+as inventory and booking persistence. A voucher rejection therefore cannot
+leave a ticket reservation behind, and a later booking failure cannot consume
+promotion quota.
+
+\section{Per-User Anti-Abuse Rule}
+For a one-use-per-user policy, a partial unique index on
+\code{(voucher\_id, user\_id)} where redemption status is not RELEASED provides
+a database-backed guarantee. A retry of the same logical booking does not
+create another redemption because idempotency is applied before the booking can
+be duplicated.
+
+\section{Release Semantics}
+Voucher quota is reserved at booking creation, represented by a
+\code{RESERVED} redemption, and counted in \code{used\_count}. Confirmation
+transitions it to \code{CONSUMED}. Expiration/cancellation transitions only a
+\code{RESERVED} redemption to \code{RELEASED}, decrements the quota in the same
+transaction, and keeps the audit row. Repeating release affects zero rows, so
+the allocation cannot be decremented twice.
+
+\section{Operation Scope}
+The elevated API supports creating an active, time-bounded percentage or fixed
+voucher with optional concert/category scope. Update and delete endpoints are
+not implemented: changing a policy already referenced by historical or active
+redemptions requires explicit versioning/audit rules beyond this assessment.
+
+\section{Correctness Evidence}
+\code{CONC-003} has 20 users compete for one remaining global voucher unit and
+verifies exactly one successful redemption and a quota that never exceeds its
+limit. Integration tests also prove eligibility/scope errors roll back ticket
+inventory and that release preserves the redemption audit row while decrementing
+\code{used\_count} only once.

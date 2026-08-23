@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    participant Timer as Worker Timer
+    participant Worker as Expiry Worker
+    participant Service as Booking Lifecycle Service
+    participant DB as PostgreSQL
+
+    Timer->>Worker: tick every 30 seconds
+    Worker->>Worker: skip if previous tick is running
+    Worker->>Service: expireBatch(limit = 100, now)
+    Service->>DB: BEGIN
+    Service->>DB: SELECT expired RESERVED rows<br/>FOR UPDATE SKIP LOCKED
+    DB-->>Service: disjoint locked batch
+
+    loop Each claimed booking
+        Service->>DB: UPDATE RESERVED -> EXPIRED
+        alt Transition won
+            Service->>DB: restore ticket inventory
+            Service->>DB: release RESERVED voucher quota
+            Service->>DB: append status history
+        else Already terminal / lost race
+            Service->>Service: no release and no duplicate history
+        end
+    end
+
+    Service->>DB: COMMIT
+    Service-->>Worker: processed count
+    Worker->>Worker: emit metric and structured log
+
+    Note over Service,DB: Row locks, lifecycle transition, resource release,<br/>and audit history share one transaction.

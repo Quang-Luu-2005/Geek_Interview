@@ -1,0 +1,66 @@
+\section{Implemented Scope}
+The submission covers concert browse/detail, category inventory, transactional
+booking creation, voucher application, customer booking lookup, confirm/cancel,
+operator monitoring and guarded changes, minimal concert/category/voucher
+creation, and automated expiry. Real authentication, payment, seat maps,
+notifications, and multi-region operation are excluded.
+
+\section{Assumptions}
+\begin{table}[H]
+\centering
+\small
+\caption{Assumptions that shape the design}
+\begin{tabularx}{\textwidth}{p{0.10\textwidth}Y}
+\toprule
+\textbf{ID} & \textbf{Assumption} \\
+\midrule
+A-01 & PostgreSQL 16 is the authoritative store and consistency boundary. \\
+A-02 & The submitted \code{x-user-id} identifies seeded users; it is not production authentication. \\
+A-03 & Inventory is category-level capacity, not assigned seating. \\
+A-04 & Prices and discounts are calculated from persisted server data; money uses fixed precision. \\
+A-05 & A new booking is \code{RESERVED} for ten minutes unless confirmed, cancelled, or expired. \\
+A-06 & One idempotency key represents one normalized request for one customer. \\
+A-07 & Voucher reservation consumes quota while the booking is active and can be released once. \\
+A-08 & API instances are stateless; correctness must survive restarts and multiple instances. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Business Rules}
+These rules express user/product policy rather than concurrency guarantees:
+
+\begin{itemize}[leftmargin=*]
+  \item requested quantity is positive and each category belongs to the concert;
+  \item only a published, future concert can be booked;
+  \item voucher status, time window, scope, and per-user policy must match;
+  \item the server owns price, discount, and total calculations;
+  \item a live reservation may be confirmed or cancelled only before expiry;
+  \item operation changes require an elevated role, a valid transition, and an audit reason.
+\end{itemize}
+
+\section{Critical Invariants}
+\begin{table}[H]
+\centering
+\small
+\caption{Invariant, enforcement, and evidence}
+\begin{tabularx}{\textwidth}{p{0.10\textwidth}p{0.34\textwidth}p{0.31\textwidth}Y}
+\toprule
+\textbf{ID} & \textbf{Invariant} & \textbf{Main enforcement} & \textbf{Evidence} \\
+\midrule
+INV-01 & Inventory never becomes negative & Conditional update + DB checks & CONC-001 \\
+INV-02 & One logical request consumes stock once & Idempotency constraint/fingerprint & CONC-002 \\
+INV-03 & Voucher quota never exceeds its limit & Conditional quota + unique redemption & CONC-003 \\
+INV-04 & Booking creation is all-or-nothing & One PostgreSQL transaction & INT-001 \\
+INV-05 & Cancellation/expiry releases once & Conditional lifecycle transition & CONC-004 \\
+INV-06 & Historical booking prices do not change & Item and discount snapshots & INT-002 \\
+INV-07 & Only one valid terminal transition wins & Update requires \code{RESERVED} & CONC-004 \\
+INV-08 & Manual/worker changes are traceable & Status history in same transaction & Operation tests \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Non-Goals}
+The assessment does not implement production identity, real payments/refunds,
+seat selection, notification delivery, full administration CRUD, analytics,
+multi-region active-active data, or event-broker infrastructure. These
+boundaries keep the evidence focused on finite-resource correctness.

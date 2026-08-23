@@ -1,0 +1,43 @@
+flowchart TB
+    customer[Customer]
+    operator[Operator / Administrator]
+    api[REST API<br/>Stateless Controllers]
+    worker[Reservation Expiry Worker]
+
+    subgraph modules[Application Modules]
+        direction LR
+        concert[Concert]
+        booking[Booking]
+        inventory[Inventory]
+        voucher[Voucher]
+        idem[Idempotency]
+        operation[Operation]
+    end
+
+    shared[Shared Infrastructure<br/>Config, Errors, Observability]
+    db[(PostgreSQL<br/>Source of Truth)]
+
+    customer --> api
+    operator --> api
+    api --> concert
+    api --> booking
+    api --> operation
+    booking --> inventory
+    booking --> voucher
+    booking --> idem
+    worker --> booking
+    api --> shared
+    worker --> shared
+    concert --> db
+    booking --> db
+    inventory --> db
+    voucher --> db
+    idem --> db
+    operation --> db
+
+    classDef actor fill:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef current fill:#e8f3ff,stroke:#2563eb,stroke-width:1.5px;
+    classDef data fill:#fff7ed,stroke:#c2410c,stroke-width:2px;
+    class customer,operator actor;
+    class api,worker,concert,booking,inventory,voucher,idem,operation,shared current;
+    class db data;

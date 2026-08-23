@@ -1,0 +1,67 @@
+\section{Testing Layers}
+\begin{table}[H]
+\centering
+\caption{Testing strategy}
+\begin{tabularx}{\textwidth}{p{0.20\textwidth}YY}
+\toprule
+\textbf{Layer} & \textbf{Purpose} & \textbf{Examples} \\
+\midrule
+Unit & Pure domain policies & Pricing, voucher eligibility, state machine, request fingerprint \\
+Integration & Real PostgreSQL semantics & Transactions, constraints, repository SQL, rollback behavior \\
+Concurrency & Prove critical invariants under races & Oversell, idempotency race, final voucher, confirm-vs-expire \\
+API/Postman & Reviewer-visible workflow validation & Customer happy path, admin operations, documented edge cases \\
+Load & Measure behavior under stated and burst traffic & Throughput, latency, expected 4xx vs system errors \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Invariant-to-Test Evidence}
+\begin{table}[H]
+\centering
+\caption{Critical correctness evidence}
+\begin{tabularx}{\textwidth}{p{0.16\textwidth}p{0.21\textwidth}Y}
+\toprule
+\textbf{Test ID} & \textbf{Invariant} & \textbf{Scenario / Expected Result} \\
+\midrule
+CONC-001 & INV-01 & 100 requests compete for 10 tickets; exactly 10 succeed; final stock=0 \\
+CONC-002 & INV-02 & 20 concurrent requests use same user/key/payload; one logical booking exists \\
+CONC-003 & INV-03 & 20 users compete for final voucher quota=1; exactly one redemption succeeds \\
+CONC-004 & INV-05 & Confirm and expiry race; exactly one valid final outcome and resource state \\
+INT-001 & INV-04 & Voucher reservation failure causes ticket reservation to roll back \\
+INT-002 & INV-06 & Changing current ticket price does not change existing booking total \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Requirement Traceability}
+The traceability chain is \textbf{Requirement $\rightarrow$ Invariant
+$\rightarrow$ Design $\rightarrow$ Implementation $\rightarrow$ Test
+Evidence}. Representative critical paths are listed below; OpenAPI, Postman,
+and the automated suites remain the complete executable inventories.
+
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\begin{longtable}{p{0.11\textwidth}p{0.11\textwidth}p{0.17\textwidth}p{0.28\textwidth}p{0.18\textwidth}}
+\caption{Critical requirement traceability}\label{tab:requirement-traceability}\\
+\toprule
+\textbf{Req.} & \textbf{Invariant} & \textbf{Design} & \textbf{Implementation evidence} & \textbf{Test evidence} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Req.} & \textbf{Invariant} & \textbf{Design} & \textbf{Implementation evidence} & \textbf{Test evidence} \\
+\midrule
+\endhead
+FR-05, NFR-01 & INV-01 & Conditional quantity update & \nolinkurl{inventory-reservation.repository.ts} + DB checks & CONC-001 \\
+FR-20, NFR-02 & INV-02 & User/key/fingerprint claim and replay & \nolinkurl{create-booking.service.ts}, \nolinkurl{idempotency.repository.ts} & CONC-002 \\
+FR-06, NFR-03 & INV-03 & Conditional quota + active per-user uniqueness & \nolinkurl{voucher-reservation.repository.ts}, migration 0004 & CONC-003 \\
+FR-05, NFR-04 & INV-04 & One booking transaction & \nolinkurl{create-booking.service.ts}, transaction helper & INT-001 \\
+FR-17--19 & INV-05, INV-07 & Conditional terminal transition + locked batch & lifecycle service/repository + expiry worker & CONC-004 \\
+FR-03, FR-05 & INV-06 & Server pricing and immutable snapshots & booking write repository + DB schema & INT-002 \\
+FR-11 & INV-07, INV-08 & Guarded transition and status history & operation service + lifecycle repository & Operation integration suite \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\section{Evidence Standard}
+Concurrency tests should verify both the HTTP/API result and final database state. A test that only counts response codes without checking inventory, booking rows, and voucher rows is insufficient evidence for consistency guarantees.

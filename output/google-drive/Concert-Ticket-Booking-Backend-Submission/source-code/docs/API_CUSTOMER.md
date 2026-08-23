@@ -1,0 +1,165 @@
+# Customer APIs
+
+These endpoints cover the customer browse, reservation, and booking lifecycle
+flow. The API is mounted below `/api`.
+
+## Identity used in the current assessment build
+
+Authentication is intentionally simplified for this assessment: customer
+booking endpoints require a development-only `x-user-id` header containing the
+seeded customer's UUID. The header is validated as a UUID and is always
+included in the SQL ownership predicate. A production access-token guard can
+replace this presentation boundary without changing the repository queries.
+
+## Endpoints
+
+### `GET /api/concerts?page=1&limit=20`
+
+Only `PUBLISHED` concerts are returned. Results are ordered by `startsAt` and
+then `id`, making page boundaries deterministic.
+
+```json
+{
+  "data": [
+    {
+      "id": "...",
+      "slug": "summer-festival-2026",
+      "name": "Summer Festival 2026",
+      "status": "PUBLISHED",
+      "startsAt": "2026-12-31T12:00:00.000Z",
+      "bookable": true
+    }
+  ],
+  "pagination": { "page": 1, "limit": 20, "total": 1, "totalPages": 1 }
+}
+```
+
+### `GET /api/concerts/:id`
+
+`:id` accepts either the concert UUID or its stable slug. Draft and archived
+concerts are deliberately indistinguishable from an unknown concert and return
+`404` to customer callers.
+
+### `GET /api/concerts/:id/ticket-categories`
+
+Returns categories ordered by `code`, with current catalog price and current
+inventory counters. Money is returned as a decimal string to avoid binary
+floating-point rounding. Availability is informational and may be stale as
+soon as it is read; `POST /api/bookings` is the authoritative reservation
+decision and must recalculate price server-side.
+
+```json
+{
+  "concert": { "id": "...", "slug": "summer-festival-2026", "name": "Summer Festival 2026", "status": "PUBLISHED", "startsAt": "2026-12-31T12:00:00.000Z", "bookable": true },
+  "categories": [
+    { "id": "...", "code": "STANDARD", "name": "Standard", "price": "50.00", "totalQuantity": 1000, "availableQuantity": 1000 }
+  ]
+}
+```
+
+### `GET /api/me/bookings?page=1&limit=20`
+
+Requires `x-user-id`. The query filters by `bookings.user_id` in SQL, orders
+newest first by `(created_at DESC, id DESC)`, and returns amount and item price
+snapshots. A page with no rows returns `total: 0` and `totalPages: 0`.
+
+### `GET /api/bookings/:id`
+
+Requires `x-user-id`. `:id` accepts a booking UUID or booking code. The same
+ownership predicate is applied to the detail query. A missing or cross-user
+booking returns the same `404 Booking not found` response, preventing existence
+leaks.
+
+### `POST /api/bookings`
+
+Requires `x-user-id` and `Idempotency-Key` headers. The key is scoped to the
+authenticated customer, stored with a database uniqueness constraint, and may
+be safely retried after a timeout. `concertId` accepts either the concert UUID
+or stable slug. The request contains only category IDs and quantities; price
+and totals are always read and calculated inside the database transaction.
+
+```json
+{
+  "concertId": "summer-festival-2026",
+  "items": [
+    { "ticketCategoryId": "...", "quantity": 2 }
+  ],
+  "voucherCode": "FLASH10"
+}
+```
+
+The transaction validates the published/not-started concert, rejects duplicate
+categories and quantities above 10, sorts category UUIDs before conditional
+inventory updates, reserves an optional voucher, snapshots prices, inserts the
+booking/items/status history, and commits or rolls back as one unit. New
+reservations are `RESERVED` for 10 minutes.
+
+Vouchers may be global or scoped to one concert/category. A successful booking
+creates a `RESERVED` redemption; confirmation can mark it `CONSUMED`, while an
+expiry/cancellation release marks it `RELEASED`, decrements global quota once,
+and retains the redemption row for audit.
+
+For the same customer and key, an equivalent request (including a different
+item order or voucher casing) replays the original booking response without
+decrementing inventory or voucher quota again. Reusing the key with a different
+canonical payload returns `409 IDEMPOTENCY_KEY_REUSED`. Concurrent requests with
+the same key wait for the first transaction and replay its committed result;
+the claim is rolled back if the booking transaction fails, so a key cannot be
+left permanently stuck in `PROCESSING` by an application error.
+
+### `POST /api/bookings/:id/confirm`
+
+Requires `x-user-id`. Confirmation is a conditional transition that succeeds
+only while the owned booking is `RESERVED` and `expires_at > NOW()`. It keeps
+the reserved inventory and marks a reserved voucher redemption `CONSUMED`.
+After the transition the booking is terminal; a retry receives
+`409 BOOKING_NOT_CONFIRMABLE`.
+
+### `POST /api/bookings/:id/cancel`
+
+Requires `x-user-id`. A live `RESERVED` booking may be cancelled while
+`expires_at > NOW()`. Inventory is restored and any reserved voucher quota is
+released atomically, with the redemption retained as `RELEASED` audit history.
+Expired or other terminal bookings cannot be cancelled through this endpoint.
+
+Business rejections use a stable `{ code, message, details? }` body and do not
+become HTTP 500s:
+
+| HTTP | Code | Meaning |
+| --- | --- | --- |
+| 400 | `INVALID_ITEM` | Category does not belong to the concert or request has duplicate items |
+| 409 | `CONCERT_NOT_BOOKABLE` | Concert is not published or has already started |
+| 409 | `INSUFFICIENT_TICKET_INVENTORY` | Conditional decrement affected zero rows |
+| 409 | `VOUCHER_NOT_APPLICABLE` | Voucher is invalid, disabled, or outside its concert/category scope |
+| 409 | `VOUCHER_NOT_STARTED` | Voucher validity window has not started |
+| 409 | `VOUCHER_EXPIRED` | Voucher validity window has ended |
+| 409 | `VOUCHER_EXHAUSTED` | Global voucher quota is exhausted |
+| 409 | `VOUCHER_ALREADY_REDEEMED` | One-use-per-customer voucher was already used |
+| 409 | `BOOKING_NOT_CONFIRMABLE` | Booking is expired or already terminal |
+| 409 | `BOOKING_NOT_CANCELLABLE` | Booking is already terminal |
+| 409 | `IDEMPOTENCY_KEY_REUSED` | Same key was used with a different request payload |
+| 409 | `IDEMPOTENCY_REQUEST_IN_PROGRESS` | A legacy/stale processing record has no replayable result |
+
+Inventory availability is never checked with a separate SELECT-before-UPDATE
+operation. The affected row from `UPDATE ... WHERE available_quantity >= qty
+RETURNING ...` is the concurrency decision. This prevents overselling and
+rolls back earlier category reservations if a later category or voucher fails.
+
+## Postman
+
+Import [`postman/customer-apis.collection.json`](../postman/customer-apis.collection.json)
+and set `baseUrl` (default `http://localhost:3000`), `customerUserId` to the
+seeded customer UUID, `standardCategoryId` to a seeded category UUID, and
+`idempotencyKey` to a fresh value for each logical booking intent. The
+collection includes browse, detail, categories, create booking, own history,
+and booking detail, confirm, and cancel requests. The reservation expiry worker
+polls `RESERVED` rows every 30 seconds by default; set
+`RESERVATION_EXPIRY_WORKER_ENABLED=false` to disable it for a local process.
+## API quality headers and errors
+
+All responses include `X-Request-ID`; clients may send one to correlate a
+request, otherwise the API generates it. Errors have the stable shape
+`{ code, message, details?, traceId }` and never expose stack traces. Booking
+creation also returns `429 RATE_LIMITED` with `Retry-After` when the per-user/IP
+flash-sale guard is saturated. The complete machine-readable contract is at
+[`/openapi.yaml`](../openapi/openapi.yaml).

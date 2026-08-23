@@ -1,0 +1,23 @@
+Concert Ticket Booking Backend - Local k6 Baseline
+==================================================
+
+Measurement timestamp: 2026-08-23T09:20:34.336Z
+Measurement commit: cfc291ac1ad3e6ac9ebb09d304db60cead07a62e
+Load engine: grafana/k6:0.53.0 via Docker
+PostgreSQL: 16.14
+Workload: steady 5 req/s, then burst 15 req/s
+
+Requests: 501
+Throughput: 8 req/s
+p50 latency: 13.31 ms
+p95 latency: 24.87 ms
+p99 latency: 31.73 ms
+Booking successes: 501
+Expected business rejects (400/409/429): 0
+Unexpected system error rate: 0.000%
+
+Interpretation: this is a local reproducibility baseline, not a production
+capacity guarantee. CPU, memory, database locality, and Docker networking affect
+the measured values. Full reproduction instructions and context are in
+source-code/docs/PERFORMANCE_REPORT.md.
+

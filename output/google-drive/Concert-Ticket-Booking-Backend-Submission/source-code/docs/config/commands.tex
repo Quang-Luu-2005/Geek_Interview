@@ -1,0 +1,58 @@
+% ============================================================
+% Candidate/report metadata.
+% ============================================================
+\newcommand{\CandidateName}{L{\fontencoding{T5}\selectfont\uhorn}u Huy Minh Quang}
+\newcommand{\CandidateEmail}{Not provided}
+\newcommand{\RepoURL}{Local repository submission}
+\newcommand{\ReportDate}{\today}
+
+% ============================================================
+% Reusable boxes
+% ============================================================
+\newtcolorbox{decisionbox}[1][]{
+  enhanced,
+  breakable,
+  colback=SoftBlue,
+  colframe=Secondary,
+  title={Decision #1},
+  fonttitle=\bfseries,
+  boxrule=0.8pt,
+  arc=2mm
+}
+
+\newtcolorbox{invariantbox}[1][]{
+  enhanced,
+  breakable,
+  colback=SoftGreen,
+  colframe=Secondary,
+  title={Business Invariant #1},
+  fonttitle=\bfseries,
+  boxrule=0.8pt,
+  arc=2mm
+}
+
+\newtcolorbox{riskbox}[1][]{
+  enhanced,
+  breakable,
+  colback=SoftRed,
+  colframe=Accent,
+  title={Risk #1},
+  fonttitle=\bfseries,
+  boxrule=0.8pt,
+  arc=2mm
+}
+
+\newtcolorbox{resultbox}[1][]{
+  enhanced,
+  breakable,
+  colback=SoftGray,
+  colframe=Primary,
+  title={Evidence #1},
+  fonttitle=\bfseries,
+  boxrule=0.8pt,
+  arc=2mm
+}
+
+\newcommand{\requirement}[2]{\textbf{#1} --- #2}
+\newcommand{\apiendpoint}[1]{\nolinkurl{#1}}
+\newcommand{\code}[1]{\texttt{#1}}

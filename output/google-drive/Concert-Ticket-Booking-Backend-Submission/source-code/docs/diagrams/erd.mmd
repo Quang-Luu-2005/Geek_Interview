@@ -1,0 +1,107 @@
+erDiagram
+    USERS ||--o{ BOOKINGS : places
+    USERS ||--o{ VOUCHER_REDEMPTIONS : redeems
+    USERS ||--o{ IDEMPOTENCY_RECORDS : owns
+    USERS o|--o{ BOOKING_STATUS_HISTORY : changes
+    CONCERTS ||--o{ TICKET_CATEGORIES : offers
+    CONCERTS ||--o{ BOOKINGS : receives
+    TICKET_CATEGORIES ||--|| TICKET_INVENTORIES : has
+    TICKET_CATEGORIES ||--o{ BOOKING_ITEMS : reserved_in
+    BOOKINGS ||--|{ BOOKING_ITEMS : contains
+    BOOKINGS ||--o| VOUCHER_REDEMPTIONS : uses
+    VOUCHERS ||--o{ VOUCHER_REDEMPTIONS : has
+    BOOKINGS ||--o{ BOOKING_STATUS_HISTORY : records
+
+    USERS {
+        uuid id PK
+        text email UK
+        text role
+        timestamptz created_at
+    }
+    CONCERTS {
+        uuid id PK
+        text slug UK
+        text name
+        text status
+        timestamptz starts_at
+        timestamptz created_at
+    }
+    TICKET_CATEGORIES {
+        uuid id PK
+        uuid concert_id FK
+        text code
+        text name
+        numeric price
+        timestamptz created_at
+    }
+    TICKET_INVENTORIES {
+        uuid ticket_category_id PK,FK
+        integer total_quantity
+        integer available_quantity
+        timestamptz updated_at
+    }
+    BOOKINGS {
+        uuid id PK
+        text booking_code UK
+        uuid user_id FK
+        uuid concert_id FK
+        text status
+        numeric subtotal
+        numeric discount_amount
+        numeric final_amount
+        timestamptz expires_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    BOOKING_ITEMS {
+        uuid id PK
+        uuid booking_id FK
+        uuid ticket_category_id FK
+        integer quantity
+        numeric unit_price
+        numeric line_total
+    }
+    VOUCHERS {
+        uuid id PK
+        text code UK
+        text discount_type
+        numeric discount_value
+        integer usage_limit
+        integer used_count
+        text status
+        uuid applicable_concert_id FK
+        uuid applicable_ticket_category_id FK
+        timestamptz starts_at
+        timestamptz expires_at
+    }
+    VOUCHER_REDEMPTIONS {
+        uuid id PK
+        uuid voucher_id FK
+        uuid user_id FK
+        uuid booking_id FK,UK
+        text status
+        timestamptz redeemed_at
+        timestamptz released_at
+        text released_reason
+    }
+    IDEMPOTENCY_RECORDS {
+        uuid id PK
+        uuid user_id FK
+        text idempotency_key
+        text request_hash
+        text status
+        integer response_status
+        jsonb response_body
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    BOOKING_STATUS_HISTORY {
+        uuid id PK
+        uuid booking_id FK
+        text from_status
+        text to_status
+        uuid changed_by FK
+        text change_source
+        text reason
+        timestamptz created_at
+    }

@@ -1,0 +1,39 @@
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\begin{longtable}{p{0.10\textwidth}p{0.39\textwidth}p{0.16\textwidth}p{0.27\textwidth}}
+\caption{Implemented API endpoint matrix}\label{tab:api-matrix}\\
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Actor} & \textbf{Notes} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Actor} & \textbf{Notes} \\
+\midrule
+\endhead
+GET & /health & Public & Database health \\
+GET & /health/live & Public & Process liveness; no database dependency \\
+GET & /health/ready & Public & PostgreSQL readiness \\
+GET & /metrics & Public & Prometheus text counters \\
+GET & /openapi.yaml & Public & Machine-readable API contract \\
+GET & \nolinkurl{/api/concerts} & Customer & Published concerts, pagination \\
+GET & \nolinkurl{/api/concerts/{id}} & Customer & UUID or slug detail \\
+GET & \nolinkurl{/api/concerts/{id}/ticket-categories} & Customer & Price + informational availability \\
+POST & \nolinkurl{/api/bookings} & Customer & Idempotency-Key; atomic reservation \\
+GET & \nolinkurl{/api/me/bookings} & Customer & Ownership-scoped history \\
+GET & \nolinkurl{/api/bookings/{id}} & Customer & Ownership-scoped detail \\
+POST & \nolinkurl{/api/bookings/{id}/confirm} & Customer & Conditional lifecycle transition \\
+POST & \nolinkurl{/api/bookings/{id}/cancel} & Customer & Conditional release transition \\
+GET & \nolinkurl{/api/admin/bookings} & Operator / Admin & Filter and paginate \\
+GET & \nolinkurl{/api/admin/bookings/{id}} & Operator / Admin & Investigation detail + audit \\
+PATCH & \nolinkurl{/api/admin/bookings/{id}/status} & Operator / Admin & Guarded manual transition \\
+POST & \nolinkurl{/api/admin/concerts} & Operator / Admin & Create draft concert \\
+POST & \nolinkurl{/api/admin/concerts/{id}/ticket-categories} & Operator / Admin & Create inventory-backed category \\
+POST & \nolinkurl{/api/admin/concerts/{id}/publish} & Operator / Admin & Publish valid future concert \\
+POST & \nolinkurl{/api/admin/vouchers} & Operator / Admin & Create scoped promotion \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+Health, metrics, and OpenAPI routes are intentionally outside the application
+\code{/api} prefix.

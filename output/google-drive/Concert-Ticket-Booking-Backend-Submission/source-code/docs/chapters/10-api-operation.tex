@@ -1,0 +1,61 @@
+OpenAPI is the complete machine-readable contract and Postman contains the
+executable workflows. This chapter highlights only the endpoints that expose
+the design's important boundaries.
+
+\section{Representative Customer APIs}
+\begin{table}[H]
+\centering
+\small
+\caption{Representative customer endpoints}
+\begin{tabularx}{\textwidth}{p{0.14\textwidth}p{0.38\textwidth}Y}
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Purpose} \\
+\midrule
+GET & \apiendpoint{/api/concerts} & Published catalog; detail/category routes extend this read model \\
+POST & \apiendpoint{/api/bookings} & Idempotent atomic reservation with optional voucher \\
+GET & \apiendpoint{/api/me/bookings} & Ownership-scoped booking history and detail \\
+POST & \apiendpoint{/api/bookings/\{id\}/confirm} & Guarded lifecycle command; cancel is the symmetric release command \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Representative Operation APIs}
+\begin{table}[H]
+\centering
+\small
+\caption{Representative operation endpoints}
+\begin{tabularx}{\textwidth}{p{0.14\textwidth}p{0.42\textwidth}Y}
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Purpose} \\
+\midrule
+GET & \apiendpoint{/api/admin/bookings} & Monitor/filter; detail includes audit and voucher state \\
+PATCH & \apiendpoint{/api/admin/bookings/\{id\}/status} & Guarded, reasoned, audited transition \\
+POST & \apiendpoint{/api/admin/concerts} & Draft creation; category and publish commands complete the minimal setup \\
+POST & \apiendpoint{/api/admin/vouchers} & Create validated global or scoped promotion \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Operation routes require \code{OPERATOR} or \code{ADMIN}. Manual terminal
+commands start from \code{RESERVED}; cancellation/expiry release resources in
+the same transaction and every successful command appends status history.
+Update/delete administration is intentionally omitted because historical
+pricing and voucher-version rules are unspecified.
+
+\section{Availability Semantics}
+Read availability is an informational snapshot and can become stale
+immediately. The authoritative decision is the conditional inventory update
+inside \apiendpoint{POST /api/bookings}.
+
+\section{Error Contract}
+\begin{lstlisting}[caption={Representative business error}]
+{
+  "code": "INSUFFICIENT_TICKET_INVENTORY",
+  "message": "Requested ticket quantity is no longer available",
+  "details": { "ticketCategoryId": 10 },
+  "traceId": "..."
+}
+\end{lstlisting}
+
+Expected sold-out, voucher, idempotency, ownership, and rate-limit conflicts
+produce stable documented 4xx responses rather than generic 500 errors.

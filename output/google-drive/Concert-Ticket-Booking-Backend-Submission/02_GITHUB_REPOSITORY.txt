@@ -1,0 +1,9 @@
+Concert Ticket Booking Backend
+==============================
+
+Repository: https://github.com/Quang-Luu-2005/Geek_Interview
+Branch: main
+Submission Commit: fd76c7f99d1879f0e6bf8add46b19bb48e8257a6
+Repository Access: Public
+Drive source snapshot: source-code/
+Local setup: see source-code/README.md
