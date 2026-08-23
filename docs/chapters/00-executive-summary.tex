@@ -20,23 +20,6 @@ expired rows with \code{FOR UPDATE SKIP LOCKED}; confirmation, cancellation,
 manual operation changes, and expiry all use conditional lifecycle writes so
 only one competing terminal transition can win.
 
-\begin{table}[H]
-\centering
-\caption{Final correctness and performance evidence}
-\begin{tabularx}{\textwidth}{p{0.31\textwidth}Y}
-\toprule
-\textbf{Evidence} & \textbf{Verified result} \\
-\midrule
-Automated tests & 12 unit suites / 32 tests; 7 integration suites / 22 tests; 4 concurrency suites / 7 tests \\
-Oversell race & 100 attempts for 10 tickets produce exactly 10 bookings and final inventory zero \\
-Retry and voucher races & One logical booking per idempotency key and at most one winner for the final voucher unit \\
-Lifecycle race & Confirm versus expiry produces exactly one valid terminal state with no double release \\
-k6 baseline & 501 requests, 501 booking successes, 0.000\% system errors, p95 24.87 ms and p99 31.73 ms \\
-Delivery gates & Format, lint, typecheck, build, Newman smoke, submission and delivery verification pass in CI \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
 The scope intentionally excludes real payment processing, seat-level
 selection, refunds, notifications, full catalog/voucher CRUD, and multi-region
 deployment. Confirmation is simulated or performed through an authorized

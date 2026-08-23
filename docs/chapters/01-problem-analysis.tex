@@ -29,6 +29,20 @@ boundary is summarized in Chapter~\ref{ch:payment-scope}.
 ``Explicit'' means stated by the brief; ``Derived'' supports the stated user
 workflow; ``Engineering'' preserves correctness and operability.
 
+\textbf{Functional requirement list}
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=2pt]
+\item \textbf{FR-01--FR-04:} browse published concerts, view details, inspect categories/prices, and see availability.
+\item \textbf{FR-05--FR-08:} create a timed reservation, apply eligible vouchers, and view own booking detail/history.
+\item \textbf{FR-09--FR-11:} let operators/admins monitor, inspect, and perform guarded booking transitions with an audit reason.
+\item \textbf{FR-12--FR-14:} create draft concerts/categories, publish valid inventory, and create scoped vouchers.
+\item \textbf{FR-15:} define the documented future update/delete workflow for concert or voucher definitions.
+\item \textbf{FR-16--FR-19:} confirm/cancel reservations, expire overdue reservations, and release inventory and voucher quota exactly once.
+\item \textbf{FR-20:} replay a repeated booking intent idempotently without creating a duplicate booking.
+\end{itemize}
+
+The traceability matrix below retains the individual IDs, actors, source, and
+implementation status for review.
+
 \begingroup
 \setlength{\tabcolsep}{3pt}
 \scriptsize
@@ -67,6 +81,18 @@ FR-20 & Replay repeated booking intent idempotently & Customer/System & Engineer
 \endgroup
 
 \section{Non-Functional Requirements}
+\textbf{Non-functional requirement list}
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=2pt]
+\item \textbf{NFR-01--NFR-04:} preserve non-negative inventory, one reservation per logical request, bounded voucher quotas, and atomic booking creation.
+\item \textbf{NFR-05--NFR-06:} control flash-sale failures and demonstrate the target 300--500 booking requests per minute locally.
+\item \textbf{NFR-07:} ensure lifecycle races produce one valid terminal state with no double release.
+\item \textbf{NFR-08:} enforce ownership, role authorization, request validation, and safe configuration handling.
+\item \textbf{NFR-09--NFR-10:} keep module boundaries testable and make local setup, reproduction, and observability practical.
+\end{itemize}
+
+The acceptance-evidence matrix below records how each non-functional
+requirement is demonstrated and its current status.
+
 \begingroup
 \setlength{\tabcolsep}{3pt}
 \scriptsize

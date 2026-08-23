@@ -1,6 +1,17 @@
 \begin{titlepage}
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+\draw[Primary,line width=1.1pt,rounded corners=8pt]
+  ([xshift=0.75cm,yshift=-0.75cm]current page.north west)
+  rectangle
+  ([xshift=-0.75cm,yshift=0.75cm]current page.south east);
+\draw[Secondary,line width=0.35pt,rounded corners=5pt]
+  ([xshift=0.95cm,yshift=-0.95cm]current page.north west)
+  rectangle
+  ([xshift=-0.95cm,yshift=0.95cm]current page.south east);
+\end{tikzpicture}
 \centering
-\vspace*{1.2cm}
+\vspace*{\fill}
 
 {\Large\bfseries\color{Secondary} PRODUCT BACKEND ENGINEER TEST\par}
 \vspace{0.6cm}
@@ -8,32 +19,13 @@
 \vspace{0.4cm}
 {\LARGE Backend System Design \& Implementation Report\par}
 
-\vspace{1.2cm}
-\begin{tikzpicture}
-\node[
-  draw=Primary,
-  fill=SoftBlue,
-  rounded corners=4pt,
-  minimum width=0.82\textwidth,
-  minimum height=3.2cm,
-  align=center,
-  text width=0.74\textwidth
-] {
-\Large\textbf{Engineering Focus}\\[0.4cm]
-\textbf{Correctness under concurrency}\\[0.18cm]
-\textbf{Idempotent retries} \textbullet{} \textbf{Voucher consistency}\\[0.18cm]
-Reservation lifecycle \textbullet{} Operational workflows\\[0.18cm]
-Testable engineering trade-offs
-};
-\end{tikzpicture}
+\vspace{1.0cm}
+{\Large\bfseries \CandidateName\par}
 
-\vfill
+\vspace*{\fill}
 \begin{tabular}{rl}
-\textbf{Version:} & \ReportVersion \\
 \textbf{Submission date:} & \ReportDate \\
 \textbf{Package:} & Report, source code, and diagram files \\
 \end{tabular}
-
-\vspace{1.2cm}
-{\small Prepared for the Product Backend Engineer technical assessment.\par}
+\vspace*{1.0cm}
 \end{titlepage}
