@@ -15,7 +15,7 @@ Load & Measure behavior under stated and burst traffic & Throughput, latency, ex
 \end{tabularx}
 \end{table}
 
-\section{Invariant-to-Test Traceability}
+\section{Invariant-to-Test Evidence}
 \begin{table}[H]
 \centering
 \caption{Critical correctness evidence}
@@ -32,6 +32,36 @@ INT-002 & INV-06 & Changing current ticket price does not change existing bookin
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\section{Requirement Traceability}
+The traceability chain is \textbf{Requirement $\rightarrow$ Invariant
+$\rightarrow$ Design $\rightarrow$ Implementation $\rightarrow$ Test
+Evidence}. Representative critical paths are listed below; the endpoint and
+test appendices provide the complete reviewer-facing inventories.
+
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\begin{longtable}{p{0.11\textwidth}p{0.11\textwidth}p{0.17\textwidth}p{0.28\textwidth}p{0.18\textwidth}}
+\caption{Critical requirement traceability}\label{tab:requirement-traceability}\\
+\toprule
+\textbf{Req.} & \textbf{Invariant} & \textbf{Design} & \textbf{Implementation evidence} & \textbf{Test evidence} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Req.} & \textbf{Invariant} & \textbf{Design} & \textbf{Implementation evidence} & \textbf{Test evidence} \\
+\midrule
+\endhead
+FR-05, NFR-01 & INV-01 & Conditional quantity update & \nolinkurl{inventory-reservation.repository.ts} + DB checks & CONC-001 \\
+FR-20, NFR-02 & INV-02 & User/key/fingerprint claim and replay & \nolinkurl{create-booking.service.ts}, \nolinkurl{idempotency.repository.ts} & CONC-002 \\
+FR-06, NFR-03 & INV-03 & Conditional quota + active per-user uniqueness & \nolinkurl{voucher-reservation.repository.ts}, migration 0004 & CONC-003 \\
+FR-05, NFR-04 & INV-04 & One booking transaction & \nolinkurl{create-booking.service.ts}, transaction helper & INT-001 \\
+FR-17--19 & INV-05, INV-07 & Conditional terminal transition + locked batch & lifecycle service/repository + expiry worker & CONC-004 \\
+FR-03, FR-05 & INV-06 & Server pricing and immutable snapshots & booking write repository + DB schema & INT-002 \\
+FR-11 & INV-07, INV-08 & Guarded transition and status history & operation service + lifecycle repository & Operation integration suite \\
+\bottomrule
+\end{longtable}
+\endgroup
 
 \section{Evidence Standard}
 Concurrency tests should verify both the HTTP/API result and final database state. A test that only counts response codes without checking inventory, booking rows, and voucher rows is insufficient evidence for consistency guarantees.

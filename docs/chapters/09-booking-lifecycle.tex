@@ -1,53 +1,65 @@
 \section{State Model}
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  node distance=1.8cm and 2.2cm,
-  state/.style={draw=Primary, rounded corners, fill=SoftBlue, minimum width=2.6cm, minimum height=0.9cm, align=center},
-  terminal/.style={draw=Secondary, rounded corners, fill=SoftGreen, minimum width=2.6cm, minimum height=0.9cm, align=center},
-  arrow/.style={-{Latex[length=2.3mm]}, thick, draw=Primary}
-]
-\node[state] (reserved) {RESERVED};
-\node[terminal, above right=of reserved] (confirmed) {CONFIRMED};
-\node[terminal, below right=of reserved] (expired) {EXPIRED};
-\node[terminal, below left=of reserved] (cancelled) {CANCELLED};
-\draw[arrow] (reserved) -- node[above,sloped]{confirm} (confirmed);
-\draw[arrow] (reserved) -- node[below,sloped]{timeout} (expired);
-\draw[arrow] (reserved) -- node[below,sloped]{cancel} (cancelled);
-\end{tikzpicture}
-\caption{Simplified booking lifecycle for the assessment}
+\includegraphics[width=0.88\textwidth,height=0.48\textheight,keepaspectratio]{figures/booking-state.pdf}
+\caption{Implemented booking lifecycle}
 \label{fig:booking-state}
 \end{figure}
 
-\section{Reservation Expiry}
-New bookings have \code{status = RESERVED} and an \code{expires\_at} timestamp. A background worker finds expired reservations, transitions them to \code{EXPIRED}, and restores ticket/voucher resources inside one transaction.
+\begin{table}[H]
+\centering
+\caption{Allowed lifecycle transitions}
+\begin{tabularx}{\textwidth}{p{0.18\textwidth}p{0.18\textwidth}p{0.16\textwidth}Y}
+\toprule
+\textbf{From} & \textbf{To} & \textbf{Allowed} & \textbf{Guard / effect} \\
+\midrule
+RESERVED & CONFIRMED & Yes & Must still be live; resources remain consumed \\
+RESERVED & CANCELLED & Yes & Customer requires live reservation; release resources once \\
+RESERVED & EXPIRED & Yes & Must be past expiry; release resources once \\
+CONFIRMED & Any state & No & Terminal in current scope \\
+EXPIRED & Any state & No & Terminal in current scope \\
+CANCELLED & Any state & No & Terminal in current scope \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-The API exposes conditional \code{confirm} and \code{cancel} commands. A
-confirmation uses \code{status = RESERVED AND expires\_at > NOW()} and keeps
-the resources; cancellation is allowed only from live \code{RESERVED} and releases
-the resources. \code{CONFIRMED}, \code{EXPIRED}, and \code{CANCELLED} are
-terminal in this scope.
+\section{Why Reservation TTL Exists}
+Atomic creation prevents immediate overselling, but a reservation that never
+confirms must not hold finite resources forever. New bookings therefore store
+\code{status = RESERVED} and a configurable \code{expires\_at} (ten minutes by
+default). TTL separates a short reservation transaction from later confirmation
+and bounds abandoned capacity.
+
+\section{Expiry Worker}
+The worker wakes every 30 seconds by default, prevents overlapping ticks in one
+process, requests a default batch of 100, and delegates one transactional batch
+to the lifecycle service. The service clamps externally supplied batch sizes to
+1--500. Figure~\ref{fig:expiry-worker-sequence} shows the implemented flow.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.86\textheight,keepaspectratio]{figures/expiry-worker-sequence.pdf}
+\caption{Reservation expiry worker sequence and transaction boundary}
+\label{fig:expiry-worker-sequence}
+\end{figure}
 
 \section{Scalable Worker Claiming}
-\begin{lstlisting}[language=SQL,caption={Batch claim for expired reservations}]
+\begin{lstlisting}[language=SQL,caption={Disjoint batch claim for expired reservations}]
 SELECT id
 FROM bookings
 WHERE status = 'RESERVED'
   AND expires_at <= NOW()
 ORDER BY expires_at, id
-LIMIT 100
+LIMIT :safe_limit
 FOR UPDATE SKIP LOCKED;
 \end{lstlisting}
 
-This pattern allows multiple workers to process disjoint rows without a separate distributed lock service.
-The implementation orders rows by \code{(expires\_at, id)}, limits each batch
-to at most 500 rows, and holds the claim lock until status history and resource
-release commit. A repeat run observes no \code{RESERVED} row and therefore
-cannot decrement inventory or voucher quota twice.
+Multiple workers claim disjoint rows without a distributed lock. Each claim
+lock is held until the conditional status update, ticket restoration, reserved
+voucher release, and audit insert commit. A repeat run cannot find the row as
+\code{RESERVED} and therefore cannot release resources twice.
 
 \section{Confirm-vs-Expire Race}
-A confirmation write should be conditional on both the current state and expiry boundary, for example:
-
 \begin{lstlisting}[language=SQL,caption={Conditional confirmation}]
 UPDATE bookings
 SET status = 'CONFIRMED', updated_at = NOW()
@@ -56,4 +68,8 @@ WHERE id = :booking_id
   AND expires_at > NOW();
 \end{lstlisting}
 
-A zero-row result indicates that the booking is no longer eligible for confirmation. The boundary is evaluated by PostgreSQL after any row-lock wait, preventing a stale application timestamp from confirming a reservation after it has expired. The competing update therefore produces exactly one terminal outcome.
+The expiry and confirmation paths both require \code{status = RESERVED}; the
+database row update is the arbitration point. The expiry/time predicate is
+evaluated after any lock wait, so stale application time cannot confirm an
+already-expired reservation. \code{CONC-004} proves one terminal outcome and a
+resource state consistent with that winner.

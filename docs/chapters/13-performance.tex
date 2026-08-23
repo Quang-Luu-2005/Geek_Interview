@@ -1,39 +1,77 @@
-\section{Load Interpretation}
-The stated peak of 300--500 booking requests per minute is approximately 5--8.3 booking requests per second. Therefore, the primary performance concern is not raw throughput but hot-row contention, transaction duration, and behavior under bursts.
+\section{Expected Workload and Evaluation Goal}
+The stated peak of 300--500 booking requests per minute is approximately
+5--8.3 requests per second. The evaluation therefore targets stable behavior
+at that rate and a short burst above it. It does not claim a universal capacity
+limit: flash-sale risk is dominated by hot-row contention, transaction length,
+and controlled conflict behavior rather than aggregate request volume alone.
 
-\section{Recommended Load Scenarios}
+\section{Executed Environment}
+\begingroup
+\setlength{\tabcolsep}{4pt}
 \begin{table}[H]
 \centering
-\caption{Performance scenarios}
-\begin{tabularx}{\textwidth}{p{0.22\textwidth}YY}
+\caption{Reproducible local load-test environment}
+\begin{tabularx}{\textwidth}{p{0.28\textwidth}Y}
 \toprule
-\textbf{Scenario} & \textbf{Purpose} & \textbf{Metrics} \\
+\textbf{Field} & \textbf{Value} \\
 \midrule
-Steady stated load & Validate baseline health at 300--500 req/min & throughput, p50/p95/p99, system error rate \\
-Burst traffic & Observe retry/queue pressure & latency, DB connection pressure, 429/5xx behavior \\
-Hot inventory & Stress single category contention & successful reservations, lock wait, sold-out response latency \\
-Voucher contention & Stress final promotion quota & exact redemption count, latency, conflict rate \\
+Benchmark source commit & \code{cfc291ac1ad3e6ac9ebb09d304db60cead07a62e} \\
+Host & Windows x64; Intel Core i5-12450H (8 cores / 12 logical processors); 15.6 GiB RAM \\
+Runtime & Node.js v22.17.1; one API container \\
+Database & PostgreSQL 16.14, one local Docker container \\
+Load engine & \code{grafana/k6:0.53.0} through Docker \\
+Target & \nolinkurl{http://host.docker.internal:3300}; \code{RATE\_LIMIT\_BOOKING\_MAX=1000} confirmed in API container \\
+Dataset & Deterministic customer, concert \code{summer-festival-2026}, STANDARD inventory \\
 \bottomrule
 \end{tabularx}
 \end{table}
+\endgroup
 
-\section{Result Template}
-\begin{resultbox}[Replace with measured result]
-\textbf{Environment:} CPU/RAM/OS/Docker/PostgreSQL version\\
-\textbf{Commit:} <git SHA>\\
-\textbf{Scenario:} <k6 scenario name>\\
-\textbf{Throughput:} <value>\\
-\textbf{p95 latency:} <value>\\
-\textbf{System error rate:} <value>\\
-\textbf{Expected business rejects:} <value>\\
-\textbf{Interpretation:} <what became the bottleneck and why>
+\section{Executed Scenarios}
+The k6 script ran 5 iterations/second for 30 seconds, followed by a three-stage
+burst that ramped to 15 iterations/second and back over 30 seconds. It generated
+unique idempotency keys so each iteration represented a new logical booking.
+The rate limit was raised only to prevent the resilience guard from obscuring
+booking/database behavior.
+
+Hot inventory, final-voucher, sold-out, and lifecycle contention are covered by
+dedicated deterministic concurrency suites. They were not represented as
+separate latency/capacity scenarios in this k6 baseline; presenting them as
+measured load results would overstate the evidence.
+
+\section{Measured Results}
+\begin{resultbox}[Verified k6 baseline]
+\textbf{Requests:} 501 completed / 0 interrupted\\
+\textbf{Throughput:} 8.35 requests/second (reported as 8 req/s in the committed summary)\\
+\textbf{Latency:} p50 13.31 ms; p95 24.87 ms; p99 31.73 ms; maximum 47.63 ms\\
+\textbf{Booking outcomes:} 501 successes; 0 controlled business rejects\\
+\textbf{System error rate:} 0.000\%\\
+\textbf{Thresholds:} system error $<1\%$, p95 $<1000$ ms, and p99 $<2000$ ms all passed
 \end{resultbox}
+
+The exact generation time, database build string, reproduction command, and
+summary are committed in \code{docs/PERFORMANCE\_REPORT.md}. Controlled
+\code{400/409/429} outcomes are intentionally classified as business rejects,
+not server failures. This particular run had none because the seeded STANDARD
+capacity and limiter were sufficient for all 501 unique bookings.
+
+\section{Interpretation and Limitations}
+The measured baseline is comfortably inside the stated workload and configured
+thresholds on one local API/database pair. It demonstrates absence of 5xx or
+unexpected status under this profile, not production capacity, multi-instance
+behavior, or saturation. CPU allocation to Docker, database locality, connection
+pool limits, and the non-hot STANDARD category materially influence the result.
+
+Before a production claim, execute longer steady-state and soak tests; isolate
+sold-out and single-hot-category latency; measure final-voucher contention;
+capture database connection/lock wait/CPU/I/O; and repeat with the intended
+deployment topology and shared rate limiter.
 
 \section{Optimization Priorities}
 \begin{enumerate}
-  \item keep booking transactions short;
-  \item use correct indexes for lookup and expiry scans;
-  \item avoid external network calls inside the DB transaction;
-  \item separate expected sold-out/voucher conflicts from infrastructure failures;
-  \item scale stateless API instances only after measuring database contention.
+  \item preserve short booking transactions and deterministic resource order;
+  \item monitor connection saturation, lock waits, and the expiry index before scaling API replicas;
+  \item keep controlled sold-out/voucher/rate-limit outcomes separate from 5xx;
+  \item avoid every external network call inside finite-resource transactions;
+  \item introduce admission control, partitioning, or queueing only after hot-row evidence justifies it.
 \end{enumerate}

@@ -1,28 +1,60 @@
-\section{Authentication and Authorization}
-Authentication can be intentionally simplified for the assessment, but customer ownership and operation-role boundaries must remain explicit. At minimum:
-\begin{itemize}
-  \item a customer can only access their own booking data;
-  \item operation/admin routes require an elevated role;
-  \item secrets and environment-specific values are loaded from configuration rather than committed to source control.
-\end{itemize}
+\section{Security Boundary}
+Every customer or operation request requires a syntactically valid
+\code{x-user-id} that exists in the seeded \code{users} table. Customer routes
+require \code{CUSTOMER}; \code{/api/admin/**} requires \code{OPERATOR} or
+\code{ADMIN}. Booking reads and customer commands include the customer ID in
+the lookup predicate, so another customer's booking is not disclosed.
 
-\section{Input and Business Validation}
-The API rejects invalid quantities, categories that do not belong to the selected concert, unpublished concerts, malformed voucher codes, and any client-provided authoritative pricing information.
+This header is assessment-grade identity injection, not authentication. A
+production deployment must derive the same subject/role from a verified JWT,
+OIDC provider, or trusted gateway. Existing ownership and RBAC checks remain
+necessary after that replacement.
 
-\section{Request Correlation}
-Each request carries or receives a trace/request identifier. Logs for booking, inventory, voucher, and operation transitions include that identifier so a failed booking can be traced across the complete request path.
+Validation pipes reject malformed DTOs and non-whitelisted fields. The booking
+service rejects unpublished concerts, cross-concert categories, invalid
+quantities, untrusted price inputs, and invalid voucher policy. Configuration
+comes from environment variables; no runtime secret or private key is committed.
+Errors never expose stack traces, SQL, request hashes, or stored replay bodies.
 
-\section{Suggested Business Metrics}
-\begin{itemize}
-  \item \code{booking\_attempt\_total};
-  \item \code{booking\_success\_total};
-  \item \code{booking\_failure\_total\{reason\}};
-  \item \code{booking\_duration\_ms};
-  \item \code{inventory\_conflict\_total};
-  \item \code{voucher\_exhausted\_total};
-  \item \code{idempotency\_hit\_total};
-  \item \code{reservation\_expired\_total}.
-\end{itemize}
+\section{Reliability Controls}
+Correctness comes from short ACID transactions, database constraints,
+conditional writes, bounded classified DB retries, and idempotency. Liveness is
+process-only; readiness checks PostgreSQL and returns \code{503} when the API
+cannot commit. Controlled sold-out/voucher/idempotency/rate-limit outcomes use
+stable 4xx contracts rather than being counted as infrastructure failures.
 
-\section{Flash-Sale Protection}
-Rate limiting is a resilience control, not a correctness mechanism. Even when a rate limiter is bypassed or unavailable, database constraints and atomic updates must still protect inventory and voucher invariants.
+The process-local booking-attempt limiter defaults to 60 attempts per customer
+per 60 seconds and returns \code{429} with \code{Retry-After}. It reduces one
+instance's abuse/retry pressure but never replaces inventory or idempotency
+correctness. Multi-instance production requires a shared gateway/Redis policy.
+
+\section{Observability}
+The API validates, creates, and propagates \code{X-Request-ID}; responses and
+standard errors expose the same correlation value. One-line JSON logs include
+bounded request/event fields and omit request bodies, access tokens, voucher
+codes, and payment data.
+
+\code{GET /metrics} exposes low-cardinality Prometheus text counters including
+HTTP totals, booking attempts/successes/replays/failures, sold-out and inventory
+conflicts, voucher exhaustion, idempotency conflicts, and expired bookings.
+These counters are in-process and reset on restart.
+
+\section{Implementation Status and Evolution}
+\begin{table}[H]
+\centering
+\caption{Security, reliability, and observability status}
+\begin{tabularx}{\textwidth}{p{0.30\textwidth}p{0.19\textwidth}Y}
+\toprule
+\textbf{Capability} & \textbf{Status} & \textbf{Boundary / evolution} \\
+\midrule
+Ownership and operation RBAC & Implemented & Backed by seeded user roles and scoped queries \\
+Signed authentication / identity provider & Future & Replace trusted header with verified claims \\
+DTO/business validation and stable errors & Implemented & Central validation and sanitized exception filter \\
+Request correlation and structured logs & Implemented & Local JSON output; forward to managed log storage later \\
+Liveness/readiness and metrics endpoint & Implemented & Metrics storage is currently single-instance memory \\
+Booking rate limiter & Implemented locally & Move key/state to gateway or Redis for multiple replicas \\
+Distributed tracing and alerting & Designed, not implemented & Export OpenTelemetry/Prometheus and define SLO alerts \\
+Secret manager and production TLS/WAF & Future & Deployment/platform responsibility outside submission \\
+\bottomrule
+\end{tabularx}
+\end{table}

@@ -1,4 +1,7 @@
-\begin{longtable}{p{0.11\textwidth}p{0.38\textwidth}p{0.16\textwidth}p{0.25\textwidth}}
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\begin{longtable}{p{0.10\textwidth}p{0.39\textwidth}p{0.16\textwidth}p{0.27\textwidth}}
 \caption{Implemented API endpoint matrix}\label{tab:api-matrix}\\
 \toprule
 \textbf{Method} & \textbf{Endpoint} & \textbf{Actor} & \textbf{Notes} \\
@@ -13,24 +16,24 @@ GET & /health/live & Public & Process liveness; no database dependency \\
 GET & /health/ready & Public & PostgreSQL readiness \\
 GET & /metrics & Public & Prometheus text counters \\
 GET & /openapi.yaml & Public & Machine-readable API contract \\
-GET & /concerts & Customer & Published concerts, pagination \\
-GET & /concerts/\{id\} & Customer & UUID or slug detail \\
-GET & /concerts/\{id\}/ticket-categories & Customer & Price + informational availability \\
-POST & /bookings & Customer & Idempotency-Key; atomic reservation \\
-GET & /me/bookings & Customer & Ownership-scoped history \\
-GET & /bookings/\{id\} & Customer & Ownership-scoped detail \\
-POST & /bookings/\{id\}/confirm & Customer & Conditional lifecycle transition \\
-POST & /bookings/\{id\}/cancel & Customer & Conditional release transition \\
-GET & /admin/bookings & Operator/Admin & Filter and paginate \\
-GET & /admin/bookings/\{id\} & Operator/Admin & Investigation detail + audit \\
-PATCH & /admin/bookings/\{id\}/status & Operator/Admin & Guarded manual transition \\
-POST & /admin/concerts & Operator/Admin & Create draft concert \\
-POST & /admin/concerts/\{id\}/ticket-categories & Operator/Admin & Create inventory-backed category \\
-POST & /admin/concerts/\{id\}/publish & Operator/Admin & Publish valid future concert \\
-POST & /admin/vouchers & Operator/Admin & Create scoped promotion \\
+GET & \nolinkurl{/api/concerts} & Customer & Published concerts, pagination \\
+GET & \nolinkurl{/api/concerts/{id}} & Customer & UUID or slug detail \\
+GET & \nolinkurl{/api/concerts/{id}/ticket-categories} & Customer & Price + informational availability \\
+POST & \nolinkurl{/api/bookings} & Customer & Idempotency-Key; atomic reservation \\
+GET & \nolinkurl{/api/me/bookings} & Customer & Ownership-scoped history \\
+GET & \nolinkurl{/api/bookings/{id}} & Customer & Ownership-scoped detail \\
+POST & \nolinkurl{/api/bookings/{id}/confirm} & Customer & Conditional lifecycle transition \\
+POST & \nolinkurl{/api/bookings/{id}/cancel} & Customer & Conditional release transition \\
+GET & \nolinkurl{/api/admin/bookings} & Operator / Admin & Filter and paginate \\
+GET & \nolinkurl{/api/admin/bookings/{id}} & Operator / Admin & Investigation detail + audit \\
+PATCH & \nolinkurl{/api/admin/bookings/{id}/status} & Operator / Admin & Guarded manual transition \\
+POST & \nolinkurl{/api/admin/concerts} & Operator / Admin & Create draft concert \\
+POST & \nolinkurl{/api/admin/concerts/{id}/ticket-categories} & Operator / Admin & Create inventory-backed category \\
+POST & \nolinkurl{/api/admin/concerts/{id}/publish} & Operator / Admin & Publish valid future concert \\
+POST & \nolinkurl{/api/admin/vouchers} & Operator / Admin & Create scoped promotion \\
 \bottomrule
 \end{longtable}
+\endgroup
 
-The public paths are mounted under the application \code{/api} prefix except
-for the health, metrics and OpenAPI routes, which are intentionally excluded
-from that prefix.
+Health, metrics, and OpenAPI routes are intentionally outside the application
+\code{/api} prefix.

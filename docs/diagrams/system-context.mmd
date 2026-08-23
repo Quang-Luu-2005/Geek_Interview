@@ -1,0 +1,24 @@
+flowchart LR
+    customer[Customer]
+    operator[Operator / Administrator]
+
+    backend[Concert Ticket Booking Backend<br/>REST API + Expiry Worker]
+    database[(PostgreSQL<br/>system of record)]
+
+    payment[External Payment Gateway<br/>Future / Out of Scope]
+    notification[Email / SMS Provider<br/>Future / Out of Scope]
+
+    customer -->|browse, reserve, confirm, cancel| backend
+    operator -->|monitor and guarded administration| backend
+    backend -->|ACID transactions and queries| database
+    backend -.->|future payment session / webhook| payment
+    backend -.->|future post-commit notification| notification
+
+    classDef actor fill:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef current fill:#e8f3ff,stroke:#2563eb,stroke-width:2px;
+    classDef data fill:#fff7ed,stroke:#c2410c,stroke-width:2px;
+    classDef future fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5;
+    class customer,operator actor;
+    class backend current;
+    class database data;
+    class payment,notification future;

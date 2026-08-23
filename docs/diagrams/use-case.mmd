@@ -1,7 +1,8 @@
 flowchart LR
     customer[Customer]
-    operator[Operator / Admin]
-    scheduler[Expiry Scheduler]
+    operator[Operator]
+    administrator[Administrator]
+    worker[System Worker]
 
     subgraph system[Concert Ticket Booking System]
         direction TB
@@ -52,7 +53,14 @@ flowchart LR
     operator --> configureVoucher
     operator --> observe
 
-    scheduler --> expire
+    administrator --> manageBookings
+    administrator --> changeStatus
+    administrator --> configureConcert
+    administrator --> publishConcert
+    administrator --> configureVoucher
+    administrator --> observe
+
+    worker --> expire
 
     create -.->|include| validateInventory
     create -.->|include| enforceIdempotency
@@ -73,7 +81,7 @@ flowchart LR
     classDef automatedUseCase fill:#fff7ed,stroke:#c2410c,stroke-width:1px;
     classDef internalUseCase fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5;
 
-    class customer,operator,scheduler actor;
+    class customer,operator,administrator,worker actor;
     class browse,availability,create,voucher,retry,ownBookings,confirm,cancel customerUseCase;
     class manageBookings,changeStatus,configureConcert,publishConcert,configureVoucher,observe operationUseCase;
     class expire,release automatedUseCase;

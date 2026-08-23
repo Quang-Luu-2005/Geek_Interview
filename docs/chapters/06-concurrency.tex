@@ -12,6 +12,24 @@ RETURNING available_quantity;
 
 A returned row means the reservation succeeded. No returned row means there was insufficient inventory. The correctness decision is made by PostgreSQL rather than by a stale application read.
 
+\section{Alternatives Considered}
+\begin{table}[H]
+\centering
+\caption{Inventory concurrency alternatives}
+\begin{tabularx}{\textwidth}{p{0.25\textwidth}p{0.22\textwidth}Y}
+\toprule
+\textbf{Option} & \textbf{Correctness potential} & \textbf{Assessment trade-off} \\
+\midrule
+Application read then update & Unsafe & Race window exists between the read and write \\
+Pessimistic row lock & Correct & Explicit lock/read/write path is longer than the selected one-statement predicate \\
+Optimistic version column & Correct with retry & Adds version/retry policy for a resource naturally guarded by quantity predicate \\
+Atomic conditional update & Correct; selected & PostgreSQL decides against current row state in one statement \\
+Redis distributed lock & Potentially correct with careful failure handling & Creates a second coordination authority and lock-expiry failure modes \\
+Queue serialization & Correct but asynchronous & Adds queue latency/operations and changes synchronous request semantics \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 \section{Concurrency Strategy}
 \begin{table}[H]
 \centering
@@ -29,5 +47,9 @@ Multiple expiry workers & Row claim with \code{FOR UPDATE SKIP LOCKED} (optional
 \end{tabularx}
 \end{table}
 
-\section{Expected Correctness Evidence}
-A representative concurrency test seeds 10 available tickets and launches 100 simultaneous booking attempts. The expected result is exactly 10 successful bookings, 90 controlled sold-out responses, and final inventory of zero---never a negative value.
+\section{Correctness Evidence}
+\code{CONC-001} seeds 10 tickets and launches 100 simultaneous booking
+attempts. The verified result is exactly 10 successful bookings, 90 controlled
+conflicts, final inventory zero, and no negative intermediate/final state. This
+checks persisted bookings and inventory rather than relying only on response
+codes.

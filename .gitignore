@@ -153,6 +153,9 @@ temp/
 
 # Assessment/reference PDFs are local inputs, not public source files.
 *.pdf
+# These PDFs are reproducible report assets and the reviewer-facing deliverable.
+!docs/figures/*.pdf
+!output/pdf/*.pdf
 
 # ============================================================
 # Local Docker overrides

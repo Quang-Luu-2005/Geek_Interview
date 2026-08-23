@@ -10,15 +10,17 @@
 \textbf{Decision:} Use atomic conditional SQL updates and DB constraints rather than an external distributed lock as the primary correctness mechanism.\\
 \textbf{Consequence:} Hot inventory rows may become contention points, but the failure model remains simple and explicit.
 
-\section{ADR-003 --- DB-Backed Idempotency}
+\section{ADR-003 --- Atomic Conditional Inventory Update}
 \textbf{Status:} Accepted\\
-\textbf{Decision:} Scope idempotency key by user, store a request fingerprint, and replay the original logical result.\\
-\textbf{Consequence:} Requires lifecycle/retention policy for idempotency records.
+\textbf{Decision:} Reserve inventory with one \code{UPDATE ... WHERE available\_quantity >= quantity RETURNING} statement inside the booking transaction.\\
+\textbf{Alternatives:} Read-then-update, explicit row lock, optimistic versioning, Redis lock, queue serialization.\\
+\textbf{Consequence:} PostgreSQL remains authoritative and oversell is prevented; highly demanded rows may contend.
 
 \section{ADR-004 --- Idempotent Booking API}
 \textbf{Status:} Accepted\\
 \textbf{Decision:} Scope the idempotency key by customer, persist the request fingerprint and original result, and replay the same logical booking.\\
-\textbf{Consequence:} Idempotency records need a retention policy.
+\textbf{Alternatives:} Process-local memory or cache-only deduplication.\\
+\textbf{Consequence:} Correctness survives process restarts; idempotency records need a retention policy.
 
 \section{ADR-005 --- Database-Polling Expiry Worker}
 \textbf{Status:} Accepted\\

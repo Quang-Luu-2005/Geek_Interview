@@ -1,47 +1,44 @@
-\section{Architecture Overview}
-\begin{decisionbox}[Use a modular monolith for the assessment]
-A modular monolith keeps the critical booking operation inside one transactional consistency boundary while preserving clear domain/module separation. The API layer remains stateless and can be replicated horizontally if needed.
-\end{decisionbox}
+\section{Architecture Goals}
+The architecture must keep correctness-sensitive transactions short and
+understandable, preserve strong consistency for finite resources, support the
+stated workload without speculative infrastructure, remain maintainable and
+testable, reproduce locally, and expose explicit evolution seams.
+
+\section{System Context}
+Figure~\ref{fig:system-context} distinguishes current dependencies from future
+external systems. PostgreSQL is the only current external consistency service.
+Payment and notification providers are deliberately dashed and labelled as
+future/out of scope.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  node distance=1.0cm and 1.1cm,
-  box/.style={draw=Primary, rounded corners, minimum width=3.1cm, minimum height=0.85cm, align=center, fill=SoftBlue},
-  module/.style={draw=Secondary, rounded corners, minimum width=2.7cm, minimum height=0.75cm, align=center, fill=SoftGreen},
-  data/.style={draw=Accent, cylinder, shape border rotate=90, aspect=0.25, minimum height=1.2cm, minimum width=2.8cm, align=center, fill=SoftGray},
-  arrow/.style={-{Latex[length=2.2mm]}, thick, draw=Primary}
-]
-\node[box] (client) {Customer / Operator};
-\node[box, below=of client] (api) {REST API\\Modular Monolith};
-\node[module, below left=of api] (concert) {Concert};
-\node[module, below=of api] (booking) {Booking};
-\node[module, below right=of api] (operation) {Operation};
-\node[module, below left=of booking] (inventory) {Inventory};
-\node[module, below=of booking] (voucher) {Voucher};
-\node[module, below right=of booking] (idem) {Idempotency};
-\node[data, below=1.2cm of voucher] (db) {PostgreSQL};
-\node[box, right=1.6cm of db] (worker) {Expiry Worker};
+\includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{figures/system-context.pdf}
+\caption{Current system context with explicitly out-of-scope future actors}
+\label{fig:system-context}
+\end{figure}
 
-\draw[arrow] (client) -- (api);
-\draw[arrow] (api) -- (concert);
-\draw[arrow] (api) -- (booking);
-\draw[arrow] (api) -- (operation);
-\draw[arrow] (booking) -- (inventory);
-\draw[arrow] (booking) -- (voucher);
-\draw[arrow] (booking) -- (idem);
-\draw[arrow] (concert) -- (db);
-\draw[arrow] (inventory) -- (db);
-\draw[arrow] (voucher) -- (db);
-\draw[arrow] (idem) -- (db);
-\draw[arrow] (operation) -- (db);
-\draw[arrow] (worker) -- (db);
-\end{tikzpicture}
-\caption{Current assessment architecture}
+\section{Selected Architecture: Modular Monolith and PostgreSQL}
+\begin{decisionbox}[Use a modular monolith for the assessment]
+Booking, inventory, voucher, and idempotency require strong transactional
+coordination. Keeping these modules in one deployable process and one database
+avoids distributed transactions while retaining explicit domain boundaries.
+The stateless API can still be replicated horizontally when measured demand
+requires it.
+\end{decisionbox}
+
+This selection is proportional to the stated 5--8.3 booking requests per
+second. Microservices would add network failure modes, service discovery,
+cross-service retry semantics, and distributed coordination without improving
+the finite-resource guarantees demonstrated by this submission.
+
+\section{Component and Module Architecture}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/architecture.pdf}
+\caption{Modular-monolith component view}
 \label{fig:architecture}
 \end{figure}
 
-\section{Module Responsibilities}
 \begin{table}[H]
 \centering
 \caption{Logical modules and responsibilities}
@@ -49,19 +46,50 @@ A modular monolith keeps the critical booking operation inside one transactional
 \toprule
 \textbf{Module} & \textbf{Responsibility} \\
 \midrule
-Concert & Concert catalog, publication status, ticket-category visibility \\
-Inventory & Ticket capacity and atomic reservation/release primitives \\
-Booking & Booking orchestration, price snapshot, transaction boundary, lifecycle \\
-Voucher & Eligibility, discount policy, quota reservation/release \\
-Idempotency & Retry deduplication, request fingerprint, response replay \\
-Operation & Booking monitoring, manual state transitions, audit history \\
-Shared & DB transaction utilities, validation, error contract, logging \\
+Concert & Published catalog, categories, prices, and informational availability \\
+Inventory & Atomic ticket reservation and exactly-once release primitives \\
+Booking & Aggregate creation/read, server pricing, transaction orchestration, and lifecycle \\
+Voucher & Eligibility, scope, discount policy, quota reservation/consume/release \\
+Idempotency & Request fingerprint, user/key claim, conflict, and response replay \\
+Operation & Elevated booking queries, guarded manual transitions, concert/category/voucher creation \\
+Expiry Worker & Batch claim of overdue reservations and transactional resource release \\
+Shared & Configuration, database/transaction helpers, validation, errors, rate limit, and observability \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
+The dependency direction is \code{Controller -> Application/Use Case -> Domain
+and Repository ports -> Infrastructure}. Controllers translate HTTP concerns;
+they do not own business transactions.
+
 \section{Why PostgreSQL Is the Consistency Boundary}
-The finite resources being protected---ticket inventory, voucher quota, booking state, and idempotency records---are relational and transactional. Keeping them in PostgreSQL avoids coordinating correctness across multiple distributed locking systems. Redis may still be useful for optional caching or rate limiting, but it is not the authoritative inventory source.
+Ticket inventory, voucher quota, booking state, audit history, and idempotency
+records are relational and participate in the same business outcomes.
+PostgreSQL conditional writes, row locks, constraints, and ACID rollback make it
+the natural arbiter. Redis may later support a shared limiter/cache, but it is
+not authoritative inventory and no Redis lock is needed for correctness.
+
+\section{Alternatives and Trade-offs}
+\begin{table}[H]
+\centering
+\caption{Architecture alternatives considered}
+\begin{tabularx}{\textwidth}{p{0.26\textwidth}p{0.28\textwidth}Y}
+\toprule
+\textbf{Decision point} & \textbf{Alternative} & \textbf{Reason not selected now} \\
+\midrule
+Deployment boundary & Microservices & Cross-service consistency and operational overhead exceed the assessment need \\
+Inventory coordination & Redis distributed lock & Adds a second failure/authority system around data already owned by PostgreSQL \\
+Critical workflow & Eventual event-driven reservation & Cannot provide the same simple all-or-nothing booking result without larger saga semantics \\
+Expiry processing & Broker-delivered delayed messages & Reliable broker scheduling is useful at scale but unnecessary for the current bounded polling workload \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \section{Scaling Direction}
-The API is stateless and can scale horizontally. The expiry worker can scale with row claiming (for example, \code{FOR UPDATE SKIP LOCKED}). If asynchronous integrations later become substantial, a transactional outbox can bridge committed database state to a message broker without introducing a dual-write correctness problem.
+Scale stateless API replicas first only after measuring database contention.
+Multiple expiry workers already coordinate through \code{FOR UPDATE SKIP
+LOCKED}. If post-commit integrations grow, a transactional outbox can bridge
+database state to a broker without dual writes. Hot categories may ultimately
+need admission control, queueing, or inventory partitioning, but those are
+revisit decisions based on observed lock waits rather than baseline
+requirements.

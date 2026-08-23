@@ -1,28 +1,139 @@
 \section{Business Context}
-The platform supports customers who browse concerts, inspect ticket categories and prices, reserve tickets, apply promotional vouchers, and track booking status. The internal Operation Dashboard supports monitoring bookings, publishing concert tickets, validating ticket availability, managing voucher campaigns, handling failed or suspicious bookings, and manually updating booking status when necessary \cite{geekup-assessment}.
+The platform supports two workflow groups. Customers browse published
+concerts, inspect category prices and availability, reserve finite inventory,
+optionally apply a voucher, and track a booking through a deliberately small
+lifecycle. Internal operators and administrators monitor bookings, investigate
+failures or suspicious activity, perform guarded status changes, and maintain
+the minimal concert/category/voucher setup implemented for the assessment.
+The assessment brief describes this context.
 
-\section{Traffic and Contention Profile}
-The assessment describes approximately 50,000 users and peak traffic of roughly 300--500 booking requests per minute \cite{geekup-assessment}. This corresponds to approximately 5--8.3 booking requests per second. The throughput itself is modest for a relational database; the difficult part is \textbf{contention on finite resources} during a flash sale.
+The assessment describes about 50,000 users and a peak of 300--500 booking
+requests per minute (approximately 5--8.3 requests per second). This throughput
+is modest for PostgreSQL; the difficult property is synchronized demand for the
+same last tickets or voucher units during a flash sale.
 
-\begin{riskbox}[Concurrent finite-resource contention]
-Two or more requests may observe the same remaining ticket or voucher capacity at nearly the same time. Application-level ``check then update'' logic is therefore insufficient to guarantee correctness.
-\end{riskbox}
+\section{Actors and Trust Boundaries}
+\begin{table}[H]
+\centering
+\caption{Current-scope actors}
+\begin{tabularx}{\textwidth}{p{0.19\textwidth}p{0.31\textwidth}Y}
+\toprule
+\textbf{Actor} & \textbf{Primary goals} & \textbf{Trust / scope note} \\
+\midrule
+Customer & Browse, reserve, retry safely, view, confirm, and cancel own bookings & Identified by a seeded \code{x-user-id}; this is an assessment simplification, not production authentication \\
+Operator & Monitor and investigate bookings; perform permitted operation workflows & Must hold \code{OPERATOR} or \code{ADMIN}; successful manual transitions are audited \\
+Administrator & Same implemented operation capabilities as Operator & Separate business actor, currently sharing the same elevated route policy \\
+System Worker & Expire overdue reservations and release finite resources & Internal background actor; no public endpoint or human identity \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-\section{Primary Engineering Risks}
+An external Payment Gateway is \textbf{not} a current actor because no payment
+integration exists. It appears only in the future/out-of-scope context in
+Chapter~\ref{ch:payment-scope}.
+
+\section{Functional Requirements}
+The source classification distinguishes requirements explicit in the brief,
+requirements derived from those workflows, and engineering additions required
+to preserve correctness. ``Partial'' means the implemented assessment workflow
+is intentionally narrower than full production CRUD or integration scope.
+
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\begin{longtable}{p{0.09\textwidth}p{0.34\textwidth}p{0.13\textwidth}p{0.14\textwidth}p{0.09\textwidth}p{0.11\textwidth}}
+\caption{Functional requirement catalogue}\label{tab:functional-requirements}\\
+\toprule
+\textbf{ID} & \textbf{Description} & \textbf{Actor} & \textbf{Source} & \textbf{Priority} & \textbf{Status} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Description} & \textbf{Actor} & \textbf{Source} & \textbf{Priority} & \textbf{Status} \\
+\midrule
+\endhead
+FR-01 & Browse published concerts & Customer & Explicit & Must & Implemented \\
+FR-02 & View concert details & Customer & Explicit & Must & Implemented \\
+FR-03 & View ticket categories and server prices & Customer & Explicit & Must & Implemented \\
+FR-04 & View informational ticket availability & Customer & Explicit & Must & Implemented \\
+FR-05 & Create a time-limited ticket reservation & Customer & Explicit & Must & Implemented \\
+FR-06 & Apply an eligible promotional voucher & Customer & Explicit & Must & Implemented \\
+FR-07 & View owned booking detail and status & Customer & Derived & Must & Implemented \\
+FR-08 & View paginated own booking history & Customer & Explicit & Should & Implemented \\
+FR-09 & Monitor and filter bookings & Operator / Admin. & Explicit & Must & Implemented \\
+FR-10 & Inspect booking, voucher, idempotency, and audit detail & Operator / Admin. & Derived & Must & Implemented \\
+FR-11 & Perform a permitted manual booking transition with reason & Operator / Admin. & Explicit & Must & Implemented \\
+FR-12 & Create draft concerts and inventory-backed categories & Operator / Admin. & Explicit & Should & Implemented \\
+FR-13 & Publish only a valid future concert with inventory & Operator / Admin. & Derived & Should & Implemented \\
+FR-14 & Create a validated, optionally scoped voucher campaign & Operator / Admin. & Explicit & Should & Implemented \\
+FR-15 & Update/delete concert or voucher definitions & Operator / Admin. & Explicit & Optional & Not implemented \\
+FR-16 & Confirm or cancel a live owned reservation & Customer & Derived & Must & Implemented \\
+FR-17 & Expire overdue reservations automatically & System Worker & Eng. addition & Must & Implemented \\
+FR-18 & Release inventory after eligible cancellation/expiry & System Worker & Eng. addition & Must & Implemented \\
+FR-19 & Release reserved voucher quota exactly once & System Worker & Eng. addition & Must & Implemented \\
+FR-20 & Replay repeated booking requests idempotently & Customer / System & Eng. addition & Must & Implemented \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\section{Non-Functional Requirements}
+\begingroup
+\setlength{\tabcolsep}{4pt}
+\scriptsize
+\begin{longtable}{p{0.11\textwidth}p{0.42\textwidth}p{0.27\textwidth}p{0.12\textwidth}}
+\caption{Non-functional requirements}\label{tab:non-functional-requirements}\\
+\toprule
+\textbf{ID} & \textbf{Requirement} & \textbf{Acceptance evidence} & \textbf{Status} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Requirement} & \textbf{Acceptance evidence} & \textbf{Status} \\
+\midrule
+\endhead
+NFR-01 & Inventory remains non-negative under contention & DB checks + CONC-001 & Implemented \\
+NFR-02 & One logical request reserves resources at most once & Unique key/fingerprint + CONC-002 & Implemented \\
+NFR-03 & Voucher quota and per-user policy remain consistent & Conditional update/index + CONC-003 & Implemented \\
+NFR-04 & Booking creation is atomic across dependent writes & Transaction rollback integration tests & Implemented \\
+NFR-05 & Flash-sale failures are controlled, not silent corruption & Stable 4xx errors, limiter, k6 metrics & Implemented \\
+NFR-06 & Support the stated 300--500 booking requests/minute profile & 501-request steady/burst k6 run & Demonstrated locally \\
+NFR-07 & Concurrent lifecycle commands produce one valid final state & Conditional writes + CONC-004 & Implemented \\
+NFR-08 & Enforce ownership, operation roles, validation, and safe config & API/integration/security checks & Assessment-grade \\
+NFR-09 & Preserve maintainable domain/module boundaries & Modular monolith structure + ADR-001 & Implemented \\
+NFR-10 & Permit deterministic automated verification & Unit, integration, concurrency, Postman, and k6 & Implemented \\
+NFR-11 & Expose correlation, health, structured logs, and metrics & Request ID, probes, JSON logs, \code{/metrics} & Implemented locally \\
+NFR-12 & Reproduce setup from a clean clone & Lockfile, Compose, migrations, seed, runbook & Implemented \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\section{Use Case Diagram}
+Figure~\ref{fig:use-case} is limited to implemented actors and capabilities.
+Internal include/extend relationships expose the correctness mechanisms that
+support actor goals without turning them into separate external actors.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.80\textheight,keepaspectratio]{figures/use-case.pdf}
+\caption{Current-scope actor and use case view}
+\label{fig:use-case}
+\end{figure}
+
+\section{Primary Engineering Risks and Design Goal}
 \begin{table}[H]
 \centering
 \caption{Assessment risks and intended engineering response}
 \begin{tabularx}{\textwidth}{p{0.23\textwidth}YY}
 \toprule
-\textbf{Risk} & \textbf{Failure Mode} & \textbf{Design Response} \\
+\textbf{Risk} & \textbf{Failure mode} & \textbf{Design response} \\
 \midrule
-Overselling & More tickets sold than inventory & Atomic conditional inventory update inside DB transaction \\
-Duplicate retries & Multiple bookings from one user intent & Idempotency key + database uniqueness + response replay \\
-Voucher abuse & Global/per-user quota exceeded & Atomic quota update + redemption constraint \\
-Flash-sale instability & Retry storms and hot-row contention & Short transactions, controlled errors, optional rate limiting, evidence-based load testing \\
+Overselling & More tickets sold than inventory & Atomic conditional inventory update inside a DB transaction \\
+Duplicate retries & Multiple bookings from one user intent & Idempotency key, uniqueness, fingerprint, and response replay \\
+Voucher abuse & Global/per-user quota exceeded & Atomic quota update and redemption constraint \\
+Flash-sale instability & Retry storms and hot-row contention & Short transactions, controlled errors, rate limiting, and measured load evidence \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\section{Design Goal}
-The central goal is not to maximize the number of features. The goal is to build a simple backend whose critical business invariants remain correct under concurrent and retried booking requests, while making design decisions and trade-offs easy to review and defend.
+The design goal is a backend whose critical invariants remain correct under
+concurrent and retried requests, with enough explicit evidence that a reviewer
+can reproduce and defend each decision. Feature count is secondary to that
+correctness objective.

@@ -1,40 +1,61 @@
-\section{Create Booking Flow}
-The critical path is intentionally short and transactional.
+\section{Create Booking Sequence}
+The create-booking use case converts one authenticated customer intent into one
+replayable result. Figure~\ref{fig:booking-sequence} shows the new-key,
+same-payload replay, changed-payload conflict, sold-out, and voucher-failure
+branches.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  node distance=0.58cm,
-  flowstep/.style={draw=Primary, rounded corners, fill=SoftBlue, minimum width=9.5cm, minimum height=0.65cm, align=center},
-  arrow/.style={-{Latex[length=2mm]}, thick, draw=Primary}
-]
-\node[flowstep] (s1) {1. Validate request and normalize ticket items};
-\node[flowstep, below=of s1] (s2) {2. Claim / check Idempotency-Key};
-\node[flowstep, below=of s2] (s3) {3. BEGIN DATABASE TRANSACTION};
-\node[flowstep, below=of s3] (s4) {4. Validate concert and ticket categories};
-\node[flowstep, below=of s4] (s5) {5. Atomically reserve ticket inventory};
-\node[flowstep, below=of s5] (s6) {6. Validate and atomically reserve voucher quota (optional)};
-\node[flowstep, below=of s6] (s7) {7. Calculate server-side price and snapshot amounts};
-\node[flowstep, below=of s7] (s8) {8. Insert booking and booking items};
-\node[flowstep, below=of s8] (s9) {9. COMMIT};
-\node[flowstep, below=of s9] (s10) {10. Persist/replay idempotent result and return response};
-
-\foreach \a/\b in {s1/s2,s2/s3,s3/s4,s4/s5,s5/s6,s6/s7,s7/s8,s8/s9,s9/s10}{\draw[arrow] (\a) -- (\b);}
-\end{tikzpicture}
-\caption{Create-booking transaction flow}
-\label{fig:create-booking-flow}
+\includegraphics[width=\textwidth,height=0.88\textheight,keepaspectratio]{figures/booking-sequence.pdf}
+\caption{Canonical idempotent create-booking sequence}
+\label{fig:booking-sequence}
 \end{figure}
 
-\section{Transaction Boundary}
-The following operations belong inside one transaction:
-\begin{itemize}
-  \item ticket inventory reservation;
-  \item voucher quota reservation and redemption record;
-  \item booking and booking-item persistence;
-  \item any audit row that must be consistent with the transition being made.
-\end{itemize}
+The implemented reasoning sequence is:
+\begin{enumerate}
+  \item authenticate the assessment identity, validate the DTO, normalize items, and calculate a canonical request fingerprint;
+  \item inspect an already-completed idempotency record for an immediate replay/conflict path;
+  \item for a new logical request, begin one database transaction and claim the user, key, and fingerprint;
+  \item validate that the concert and categories are bookable;
+  \item reserve every category by atomic conditional update in deterministic order;
+  \item validate and reserve voucher policy/quota when supplied;
+  \item calculate subtotal, discount, and final amount from persisted server data;
+  \item insert the booking, immutable items, initial status history, and completed idempotency response;
+  \item commit and return the result.
+\end{enumerate}
 
-External calls such as email, analytics, or a payment provider must not extend the core DB transaction. They should occur after commit or through an asynchronous reliability pattern such as a transactional outbox.
+\section{Transaction Boundary}
+The idempotency claim/completion, ticket reservation, optional voucher quota and
+redemption, price snapshots, booking/items, and initial audit history share one
+transaction. A failure in any dependent operation rolls all of them back. This
+avoids a completed idempotency record for a booking that never committed and
+avoids inventory or voucher leakage after later validation fails.
+
+External calls such as email, analytics, or a future payment provider must not
+extend this database transaction. They occur only after commit or through a
+reliable post-commit pattern such as the optional transactional outbox.
+
+\section{Failure Cases}
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Create-booking failure semantics}
+\begin{tabularx}{\textwidth}{p{0.28\textwidth}p{0.27\textwidth}Y}
+\toprule
+\textbf{Failure} & \textbf{API behavior} & \textbf{Database outcome} \\
+\midrule
+Invalid/unpublished concert or category & Controlled validation/business error & No resource or booking mutation \\
+Insufficient inventory & \nolinkurl{INSUFFICIENT_TICKET_INVENTORY} conflict & Whole request rolls back; stock remains valid \\
+Invalid/ineligible/exhausted voucher & Stable voucher error & Earlier inventory writes roll back \\
+Same key, same fingerprint & Original status/body replayed & No second booking or decrement \\
+Same key, changed fingerprint & \nolinkurl{IDEMPOTENCY_KEY_REUSED} conflict & Existing logical result remains untouched \\
+Unexpected database error & Sanitized server error & Transaction rollback; no partial success is stored \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \section{Multi-Category Reservation}
-When a booking contains multiple categories, category identifiers are normalized and processed in a deterministic order. This reduces deadlock risk and ensures the request is all-or-nothing: failure to reserve any category causes the transaction to roll back previously reserved categories automatically.
+Category identifiers are normalized and processed in deterministic order. The
+consistent lock/update order reduces deadlock risk, while one transaction makes
+the request all-or-nothing: failure to reserve any category automatically
+rolls back every earlier category and optional voucher write.

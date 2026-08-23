@@ -36,3 +36,10 @@ Concurrent requests with same key & Exactly one request claims the logical opera
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\section{Concurrent Retry Evidence}
+\code{CONC-002} sends 20 concurrent requests with the same customer,
+idempotency key, and payload. The final database state contains one logical
+booking and one inventory decrement; every completed retry resolves to that
+same result. A companion integration path verifies that reusing the key with a
+different fingerprint returns a stable conflict and performs no new mutation.

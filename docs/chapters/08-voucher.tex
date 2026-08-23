@@ -17,6 +17,11 @@ WHERE id = :voucher_id
 RETURNING used_count;
 \end{lstlisting}
 
+The conditional update and redemption insert occur inside the same transaction
+as inventory and booking persistence. A voucher rejection therefore cannot
+leave a ticket reservation behind, and a later booking failure cannot consume
+promotion quota.
+
 \section{Per-User Anti-Abuse Rule}
 For a one-use-per-user policy, a partial unique index on
 \code{(voucher\_id, user\_id)} where redemption status is not RELEASED provides
@@ -31,3 +36,16 @@ transitions it to \code{CONSUMED}. Expiration/cancellation transitions only a
 \code{RESERVED} redemption to \code{RELEASED}, decrements the quota in the same
 transaction, and keeps the audit row. Repeating release affects zero rows, so
 the allocation cannot be decremented twice.
+
+\section{Operation Scope}
+The elevated API supports creating an active, time-bounded percentage or fixed
+voucher with optional concert/category scope. Update and delete endpoints are
+not implemented: changing a policy already referenced by historical or active
+redemptions requires explicit versioning/audit rules beyond this assessment.
+
+\section{Correctness Evidence}
+\code{CONC-003} has 20 users compete for one remaining global voucher unit and
+verifies exactly one successful redemption and a quota that never exceeds its
+limit. Integration tests also prove eligibility/scope errors roll back ticket
+inventory and that release preserves the redemption audit row while decrementing
+\code{used\_count} only once.

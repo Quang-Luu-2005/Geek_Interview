@@ -18,9 +18,14 @@ Voucher validation/quota & Implemented & Eligibility, quota race, redemption and
 Reservation expiry & Implemented & Polling worker with transactional release and SKIP LOCKED \\
 Operation booking monitoring & Implemented & Filter/list/detail with role guard and safe metadata \\
 Manual guarded status transition & Implemented & State machine, resource release and audit history \\
+Concert/category create and publish & Implemented & Draft creation, inventory-backed category, guarded publication \\
+Voucher create API & Implemented & Percentage/fixed policy with time, quota, and optional scope \\
+Concert/voucher update or delete & Not implemented & Historical/versioning semantics intentionally unspecified \\
 Payment/refund settlement & Out of scope & Confirmation is simulated; provider integration is future work \\
 Seat-level reservation & Out of scope & Current model reserves category capacity only \\
-Distributed rate limiting/metrics & Partial & Current process-local policy is documented; production evolution is Redis/gateway + telemetry \\
+Refunds/chargebacks/reconciliation & Out of scope & Depend on a future payment integration \\
+Email/SMS notification & Not implemented & Future post-commit/outbox consumer \\
+Distributed rate limiting/metrics & Partial & Current process-local policy; production evolution is Redis/gateway + telemetry \\
 Multi-region active-active & Out of scope & PostgreSQL is the single correctness boundary \\
 \bottomrule
 \end{longtable}
@@ -30,7 +35,29 @@ Multi-region active-active & Out of scope & PostgreSQL is the single correctness
 The current identity header, simulated payment, category-level inventory,
 process-local rate limiter/metrics, and polling expiry worker are deliberate
 assessment trade-offs. Their operational impact and production evolution path
-are recorded in \code{docs/ASSUMPTIONS\_SCOPE\_LIMITATIONS.md}. None of these
+are recorded in \nolinkurl{docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md}. None of these
 limitations relaxes the critical invariants: inventory cannot oversell,
 idempotent retries cannot double-book, voucher quota cannot over-redeem, and
 expiry cannot double-release resources.
+
+\section{Feature Scope: Voucher Operations}
+\subsection{Assumption}
+The assessment requires voucher behavior needed by the booking flow, not a full
+campaign-management product.
+
+\subsection{Implemented}
+Operators/admins can create validated percentage or fixed vouchers with a time
+window, global quota, and optional concert/category scope. Customers can apply
+them atomically during booking; expiry/cancellation can release reserved quota.
+
+\subsection{Not Implemented}
+Voucher update, disable-through-API, delete, bulk import, campaign analytics,
+and policy versioning endpoints are absent.
+
+\subsection{Reason, Consequence, and Production Evolution}
+Mutation/deletion after redemption needs explicit historical and authorization
+rules, so it was omitted rather than implemented ambiguously. The consequence
+is that an existing campaign cannot be administered through this API. A
+production extension should add immutable voucher versions, audit every
+administrative change, define disable semantics for existing reservations, and
+protect elevated commands with production identity and approval policy.

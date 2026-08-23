@@ -12,6 +12,7 @@ Retry safety & DB-backed idempotency & Correct across process restarts; adds sto
 Expiry processing & DB worker + optional SKIP LOCKED & No broker required; polling introduces bounded delay \\
 Async evolution & Transactional outbox (optional) & Reliable bridge to future broker; adds worker/table complexity \\
 Rate limiting & Optional resilience layer & Reduces abuse/retry storm; does not replace transactional correctness \\
+Payment boundary & No provider in current scope & Keeps assessment focused; backend cannot accept or verify real payments \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -25,3 +26,25 @@ Inventory is already authoritative in PostgreSQL. Adding a Redis lock would intr
 
 \subsection{Kafka as a Baseline Requirement}
 Kafka is useful when asynchronous integrations and independent consumers justify it. It is not required to make ticket reservation correct at the stated load. A transactional outbox documents a safe evolution path if event-driven integration becomes necessary.
+
+\section{Decision Review and Revisit Triggers}
+Each ADR records context, alternatives, decision, rationale, consequences, and a
+trigger for reconsideration. The decision is therefore a current fit, not a
+claim that the selected technology is universally superior.
+
+\begin{table}[H]
+\centering
+\caption{Operational triggers for architecture evolution}
+\begin{tabularx}{\textwidth}{p{0.27\textwidth}Y}
+\toprule
+\textbf{Decision} & \textbf{Revisit when} \\
+\midrule
+Modular monolith & A module needs independent ownership/deployment/scaling and its consistency boundary can be separated \\
+PostgreSQL atomic inventory & Measured hot-row lock waits or write-region limits violate the target SLO \\
+Database idempotency & Retention volume or cross-region replay requires a dedicated lifecycle/storage strategy \\
+Polling expiry worker & Poll delay, scan cost, or worker volume requires scheduled broker delivery \\
+Optional outbox & A real email/payment/analytics consumer needs guaranteed post-commit publication \\
+Process-local limiter/metrics & More than one API replica makes per-instance state operationally misleading \\
+\bottomrule
+\end{tabularx}
+\end{table}

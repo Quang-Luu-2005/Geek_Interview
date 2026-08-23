@@ -1,3 +1,10 @@
-The assessment backend is designed around a small number of explicit guarantees rather than a large number of features. PostgreSQL provides the consistency boundary for ticket inventory, voucher quota, booking state, and idempotency. The modular monolith keeps the critical booking transaction understandable and testable, while optional patterns such as scalable expiry workers and transactional outbox processing provide a credible path toward production evolution.
+The assessment backend is designed around explicit, traceable guarantees rather than a large number of loosely specified features. PostgreSQL provides the consistency boundary for ticket inventory, voucher quota, booking state, audit history, and idempotency. The modular monolith keeps the critical booking transaction understandable and testable, while scalable row claiming and the optional transactional outbox provide credible evolution paths without being prerequisites for current correctness.
 
-The final submission should be evaluated not only by API coverage, but by the evidence that critical invariants hold under concurrency, retries, failed transactions, and lifecycle races. The accompanying Swagger/OpenAPI documentation, Postman collection, local setup guide, test evidence, and architecture decision records are intended to make that evidence reproducible for the reviewer.
+The report connects requirements to business rules, invariants, design choices, implementation evidence, and automated tests. Concurrency races, rollback paths, idempotent retries, lifecycle arbitration, CI smoke, and the measured k6 baseline provide reproducible evidence rather than prospective claims. OpenAPI, Postman, migrations, seed data, runbooks, and ADRs support independent reviewer verification.
+
+The system's limitations are equally explicit. It does not process payments,
+select seats, send notifications, administer full catalog/voucher lifecycles,
+or claim multi-region production readiness. Those boundaries preserve an honest
+assessment result: the implemented workflows are internally consistent and
+defensible, while future payment and asynchronous integrations have a safe
+post-commit path that does not weaken the finite-resource transaction.

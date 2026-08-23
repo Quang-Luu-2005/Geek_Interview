@@ -19,10 +19,6 @@ Version & \ReportVersion \\
 Date & \ReportDate \\
 \end{tabularx}
 
-\chapter*{Executive Summary}
-\addcontentsline{toc}{chapter}{Executive Summary}
-\input{chapters/00-executive-summary}
-
 \tableofcontents
 \listoffigures
 \listoftables
@@ -31,10 +27,13 @@ Date & \ReportDate \\
 
 \pagenumbering{arabic}
 
-\chapter{Problem Analysis and Requirements}
+\chapter{Executive Summary}
+\input{chapters/00-executive-summary}
+
+\chapter{Requirements Analysis}
 \input{chapters/01-problem-analysis}
 
-\chapter{Scope, Assumptions, and Business Invariants}
+\chapter{Scope, Assumptions, Business Rules, and Invariants}
 \input{chapters/02-scope-assumptions-invariants}
 
 \chapter{System Architecture}
@@ -73,8 +72,11 @@ Date & \ReportDate \\
 \chapter{Architecture Decisions and Trade-offs}
 \input{chapters/14-tradeoffs}
 
-\chapter{Implemented Scope, Limitations, and Future Evolution}
+\chapter{Implemented Features, Omitted Features, and Limitations}
 \input{chapters/15-limitations}
+
+\chapter{Payment Gateway Scope Decision}
+\input{chapters/17-payment-scope}
 
 \chapter{Conclusion}
 \input{chapters/16-conclusion}
@@ -92,8 +94,5 @@ Date & \ReportDate \\
 
 \chapter{Architecture Decision Records}
 \input{appendices/D-adrs}
-
-\bibliographystyle{plainnat}
-\bibliography{references}
 
 \end{document}

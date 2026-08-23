@@ -1,15 +1,47 @@
-This report documents the design and implementation approach for a backend system serving both customer-facing booking flows and internal operation workflows for a Concert Ticket Booking Platform. The assessment highlights limited ticket inventory, limited promotional vouchers, retry-induced duplicate bookings, and flash-sale traffic spikes as the main engineering risks \cite{geekup-assessment}.
+The Concert Ticket Booking Platform serves customer reservation flows and
+internal operation workflows. Its principal risks are not raw CRUD complexity
+but contention over finite ticket inventory and voucher quota, duplicate
+bookings caused by network retries, invalid lifecycle transitions, and burst
+traffic during flash sales.
 
-The implementation deliberately prioritizes \textbf{correctness and explainability} over infrastructure complexity. The proposed baseline architecture is a modular monolith backed by PostgreSQL as the transactional consistency boundary. The critical booking path is designed so that ticket reservation, voucher reservation, price snapshotting, and booking creation succeed or fail atomically.
+The submitted solution is a \textbf{modular monolith} exposing a stateless REST
+API on Node.js 22 and NestJS, with PostgreSQL 16 as the source of truth and
+consistency boundary. Booking, inventory, voucher, idempotency, operation, and
+expiry-worker responsibilities remain logically separated while sharing one
+local ACID transaction where correctness requires coordination. Docker Compose,
+versioned SQL migrations, deterministic seed data, OpenAPI, and Postman assets
+make the solution reproducible.
 
-The primary engineering guarantees are:
-\begin{itemize}
-  \item ticket inventory never becomes negative;
-  \item retrying the same logical booking request does not create a second booking;
-  \item voucher usage cannot exceed global or per-user limits;
-  \item expired reservations release finite resources safely;
-  \item booking status transitions remain valid under concurrent operation;
-  \item historical booking prices remain immutable after creation.
-\end{itemize}
+The critical booking path uses conditional inventory updates, deterministic
+resource ordering, database-backed idempotency with request fingerprints,
+atomic voucher quota reservation, server-side price calculation, immutable
+price snapshots, and a ten-minute \code{RESERVED} TTL. A polling worker claims
+expired rows with \code{FOR UPDATE SKIP LOCKED}; confirmation, cancellation,
+manual operation changes, and expiry all use conditional lifecycle writes so
+only one competing terminal transition can win.
 
-The report also separates the \textbf{current assessment scope} from \textbf{production evolution}. Optional enhancements such as scalable expiry workers, transactional outbox processing, rate limiting, and deeper observability are documented as evolutionary steps rather than prerequisites for correctness.
+\begin{table}[H]
+\centering
+\caption{Final correctness and performance evidence}
+\begin{tabularx}{\textwidth}{p{0.31\textwidth}Y}
+\toprule
+\textbf{Evidence} & \textbf{Verified result} \\
+\midrule
+Automated tests & 12 unit suites / 32 tests; 7 integration suites / 22 tests; 4 concurrency suites / 7 tests \\
+Oversell race & 100 attempts for 10 tickets produce exactly 10 bookings and final inventory zero \\
+Retry and voucher races & One logical booking per idempotency key and at most one winner for the final voucher unit \\
+Lifecycle race & Confirm versus expiry produces exactly one valid terminal state with no double release \\
+k6 baseline & 501 requests, 501 booking successes, 0.000\% system errors, p95 24.87 ms and p99 31.73 ms \\
+Delivery gates & Format, lint, typecheck, build, Newman smoke, submission and delivery verification pass in CI \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The scope intentionally excludes real payment processing, seat-level
+selection, refunds, notifications, full catalog/voucher CRUD, and multi-region
+deployment. Confirmation is simulated or performed through an authorized
+current workflow. A future external payment provider would be called only
+after the reservation transaction commits; verified callbacks would drive an
+idempotent \code{RESERVED -> CONFIRMED} transition. These boundaries keep the
+assessment focused on demonstrable booking correctness without presenting
+future infrastructure as already implemented.

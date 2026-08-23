@@ -1,3 +1,9 @@
+\section{Data Model Goals}
+The schema must make finite-resource correctness enforceable in PostgreSQL,
+support short transactions, retain historical monetary values, provide an
+auditable booking lifecycle, and serve ownership/operation/expiry queries with
+purpose-built indexes.
+
 \section{Core Entities}
 \begin{table}[H]
 \centering
@@ -13,12 +19,24 @@
 \code{bookings} & Booking aggregate, status, total amounts, expiry timestamp \\
 \code{booking\_items} & Quantity and immutable unit-price snapshots \\
 \code{vouchers} & Promotion policy, validity period, global quota \\
-\code{voucher\_redemptions} & Per-user voucher usage and booking linkage \\
-\code{idempotency\_records} & Logical request deduplication and response replay state \\
-\code{booking\_status\_history} & Operational audit trail for transitions \\
+\nolinkurl{voucher_redemptions} & Per-user voucher usage and booking linkage \\
+\nolinkurl{idempotency_records} & Logical request deduplication and response replay state \\
+\nolinkurl{booking_status_history} & Operational audit trail for transitions \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\section{Entity Relationship Diagram}
+Figure~\ref{fig:erd} shows the implemented schema. A transactional
+\code{outbox\_events} table is intentionally absent because the outbox remains
+an ADR-backed future option rather than submitted runtime behavior.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.86\textheight,keepaspectratio]{figures/erd.pdf}
+\caption{Implemented PostgreSQL entity relationship model}
+\label{fig:erd}
+\end{figure}
 
 \section{Critical Constraints}
 \begin{lstlisting}[language=SQL,caption={Representative database constraints}]
