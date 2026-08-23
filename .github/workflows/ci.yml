@@ -69,6 +69,9 @@ jobs:
       - name: Submission verifier
         run: npm run verify:submission
 
+      - name: Delivery verifier
+        run: npm run verify:delivery
+
       - name: Write CI evidence manifest
         if: always()
         run: |

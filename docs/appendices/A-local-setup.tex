@@ -39,7 +39,8 @@ access token. Reset an existing local volume once after upgrading seed IDs:
 
 \section{Verification}
 \begin{itemize}[nosep,leftmargin=*]
-  \item Health: \code{GET /health} (HTTP 200 when PostgreSQL is reachable);
+  \item Health: \code{GET /health/live} (process liveness) and
+  \code{GET /health/ready} (HTTP 200 when PostgreSQL is reachable);
   \item OpenAPI: \code{GET /openapi.yaml};
   \item Metrics: \code{GET /metrics};
   \item Postman: import \code{postman/local.environment.json} and one of the

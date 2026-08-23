@@ -17,6 +17,7 @@ evidence-driven quality gates.
 | Review measured performance | [docs/PERFORMANCE_REPORT.md](docs/PERFORMANCE_REPORT.md) |
 | Check scope and limitations | [docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md](docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md) |
 | See the WOW / plus points | [docs/WOW_PLUS_POINTS.md](docs/WOW_PLUS_POINTS.md) |
+| Final QA and delivery | [docs/FINAL_QA.md](docs/FINAL_QA.md) |
 | See the submission tree | [submission/README.md](submission/README.md) |
 
 ## Problem and architecture snapshot
@@ -121,6 +122,7 @@ npm run typecheck
 npm run test:unit
 npm run build
 npm run verify:submission
+npm run verify:delivery
 ```
 
 Database-backed checks require PostgreSQL plus migration and seed:
@@ -165,7 +167,8 @@ explicit `DATABASE_URL` database). For the full request-by-request flow, use
 the [Postman runbook](postman/README.md). The reviewer-facing end-to-end smoke
 journey is `npm run demo:smoke`; it creates and cancels one booking without
 resetting the database. See
-[docs/WOW_PLUS_POINTS.md](docs/WOW_PLUS_POINTS.md).
+[docs/WOW_PLUS_POINTS.md](docs/WOW_PLUS_POINTS.md) and
+[docs/FINAL_QA.md](docs/FINAL_QA.md).
 
 ## Repository conventions
 

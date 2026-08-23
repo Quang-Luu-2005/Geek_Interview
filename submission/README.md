@@ -32,6 +32,8 @@ test-results/               # committed evidence indexes
 6. [WOW / plus points](../docs/WOW_PLUS_POINTS.md) — submission verification,
    four-scenario correctness showcase, live smoke journey and
    liveness/readiness probes.
+7. [Final QA & delivery](../docs/FINAL_QA.md) — final gate results,
+   cross-contract audit, hygiene and interview-defense prompts.
 
 ## 2. Submission manifest
 
@@ -53,6 +55,7 @@ test-results/               # committed evidence indexes
 | Security assumptions | [`docs/SECURITY_ASSUMPTIONS.md`](../docs/SECURITY_ASSUMPTIONS.md) |
 | Observability | [`docs/OBSERVABILITY.md`](../docs/OBSERVABILITY.md) |
 | WOW / plus points | [`docs/WOW_PLUS_POINTS.md`](../docs/WOW_PLUS_POINTS.md) |
+| Final QA & delivery | [`docs/FINAL_QA.md`](../docs/FINAL_QA.md) |
 | ADR pack | [`docs/adr/`](../docs/adr/) |
 | Test evidence index | [`test-results/README.md`](../test-results/README.md) |
 | Concurrency evidence | [`test-results/concurrency/`](../test-results/concurrency/) |
@@ -75,6 +78,7 @@ npm run test:integration
 npm run test:concurrency
 npm run build
 npm run verify:submission
+npm run verify:delivery
 npm run demo:wow
 ```
 

@@ -21,6 +21,7 @@
     "test:concurrency": "jest --config jest.config.concurrency.ts --runInBand --passWithNoTests",
     "test:load": "node scripts/check-load-test.mjs",
     "verify:submission": "node scripts/verify-submission.mjs",
+    "verify:delivery": "node scripts/verify-delivery.mjs",
     "demo:smoke": "node scripts/reviewer-smoke.mjs",
     "demo:wow": "node scripts/reviewer-wow.mjs",
     "prisma:generate": "prisma generate",
