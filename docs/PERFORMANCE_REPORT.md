@@ -1,13 +1,15 @@
 # Performance Report
 
-Generated at **2026-08-23T07:19:15.385Z** from commit **dfd8bcb8e2cb9cec15a2a7bcb02e3c771a3d529d**.
+Generated at **2026-08-23T07:21:26.850Z** from benchmark commit **edf61fa3dc2f3047c83a4af578a6c53a81b61bfb**.
 
 ## Reproduction
 
 ```bash
-DATABASE_URL=postgresql://ticket:ticket@localhost:5432/ticket_booking \
-npm run db:migrate && npm run db:seed \
-RATE_LIMIT_BOOKING_MAX=1000 BASE_URL=http://localhost:3000 npm run test:load
+export DATABASE_URL=postgresql://ticket:ticket@localhost:5432/ticket_booking
+export RATE_LIMIT_BOOKING_MAX=1000
+export BASE_URL=http://localhost:3000
+npm run db:migrate && npm run db:seed
+npm run test:load
 ```
 
 The runner resolves the seeded customer and STANDARD category automatically. It uses a native k6 binary when available, otherwise Docker image `grafana/k6:0.53.0`. Reset the local database after a run if the booking rows are not disposable.
@@ -23,8 +25,8 @@ The runner resolves the seeded customer and STANDARD category automatically. It 
 | Concert | `summer-festival-2026` |
 | Workload | steady 5 req/s, then burst 15 req/s |
 | Steady duration | `30s` |
-| Burst stages | 3 × `10s` |
-| Commit | `dfd8bcb8e2cb9cec15a2a7bcb02e3c771a3d529d` |
+| Burst stages | 3 x `10s` |
+| Commit | `edf61fa3dc2f3047c83a4af578a6c53a81b61bfb` |
 
 ## Results
 
@@ -32,9 +34,9 @@ The runner resolves the seeded customer and STANDARD category automatically. It 
 |---|---:|
 | Requests | 500 |
 | Throughput | 8 req/s |
-| p50 latency | 13.01 ms |
-| p95 latency | 23.59 ms |
-| p99 latency | 34.02 ms |
+| p50 latency | 13.21 ms |
+| p95 latency | 22.01 ms |
+| p99 latency | 29.72 ms |
 | Booking successes | 500 |
 | Expected business rejects (400/409/429) | 0 |
 | System error rate | 0.000% |
