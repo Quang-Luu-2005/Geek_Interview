@@ -151,6 +151,59 @@ The booking use case will call one `withTransaction` wrapper and pass the
 transaction client to all repositories. Repositories must not open independent
 transactions. Network calls remain outside the transaction.
 
+## Correctness-critical SQL
+
+The following snippets are shortened only for presentation; predicates and
+returning columns match the repository implementation.
+
+### Atomic inventory reservation
+
+```sql
+UPDATE ticket_inventories
+SET available_quantity = available_quantity - :quantity,
+    updated_at = NOW()
+WHERE ticket_category_id = :category_id
+  AND available_quantity >= :quantity
+RETURNING ticket_category_id, available_quantity;
+```
+
+Zero affected rows is the reservation decision and maps to
+`INSUFFICIENT_TICKET_INVENTORY`. There is no separate read-then-write stock
+check.
+
+### Atomic voucher quota reservation
+
+```sql
+UPDATE vouchers
+SET used_count = used_count + 1
+WHERE id = :voucher_id
+  AND status = 'ACTIVE'
+  AND starts_at <= NOW()
+  AND expires_at > NOW()
+  AND used_count < usage_limit
+RETURNING id, code, discount_type, discount_value;
+```
+
+The voucher row is locked while eligibility and the one-use-per-user
+redemption check run in the same transaction. If a later booking step fails,
+the quota increment rolls back.
+
+### Expiry worker claim
+
+```sql
+SELECT id, expires_at
+FROM bookings
+WHERE status = 'RESERVED'
+  AND expires_at <= :now
+ORDER BY expires_at ASC, id ASC
+LIMIT :batch_size
+FOR UPDATE SKIP LOCKED;
+```
+
+The lock is held until the status history, inventory release and voucher
+release commit. `SKIP LOCKED` is only for disjoint worker claims; customer
+reads remain ordinary consistent queries.
+
 ## Price snapshot proof
 
 At booking time, the application writes `ticket_categories.price` into

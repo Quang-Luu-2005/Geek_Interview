@@ -1,21 +1,29 @@
-\section{Evidence Capture Template}
-For each critical automated test, record the command, environment, commit SHA, and final DB-state assertions.
+\section{Evidence Capture}
+The final verification used PostgreSQL 16, Node.js 22 and the benchmark commit
+recorded in \code{docs/PERFORMANCE\_REPORT.md}. Commands and interpretation
+rules are kept in \code{docs/TEST\_STRATEGY.md}; raw machine-specific output is
+ignored.
 
 \begin{longtable}{p{0.14\textwidth}p{0.23\textwidth}p{0.20\textwidth}p{0.30\textwidth}}
-\caption{Test evidence}\label{tab:test-evidence}\\
+\caption{Critical automated test evidence}\label{tab:test-evidence}\\
 \toprule
-\textbf{Test ID} & \textbf{Scenario} & \textbf{Result} & \textbf{Evidence / Notes} \\
+\textbf{Test ID} & \textbf{Scenario} & \textbf{Result} & \textbf{Final-state assertion} \\
 \midrule
 \endfirsthead
 \toprule
-\textbf{Test ID} & \textbf{Scenario} & \textbf{Result} & \textbf{Evidence / Notes} \\
+\textbf{Test ID} & \textbf{Scenario} & \textbf{Result} & \textbf{Final-state assertion} \\
 \midrule
 \endhead
-CONC-001 & 100 requests / 10 tickets & TODO & 10 success, 90 sold-out, final stock 0 \\
-CONC-002 & 20 same idempotency requests & TODO & One logical booking, one inventory decrement \\
-CONC-003 & 20 users / last voucher & TODO & Exactly one redemption \\
-CONC-004 & Confirm vs expiry race & PASS & Conditional transition plus concurrent SKIP LOCKED worker; one terminal outcome and no double release \\
-INT-001 & Voucher failure rollback & TODO & Ticket inventory restored by transaction rollback \\
-INT-002 & Historical price immutability & TODO & Existing booking unchanged after catalog price update \\
+CONC-001 & 100 requests / 10 tickets & PASS & 10 bookings, 90 controlled conflicts, inventory 0 \\
+CONC-002 & 20 same idempotency requests & PASS & One logical booking and one inventory decrement \\
+CONC-003 & 20 users / last voucher & PASS & Exactly one redemption and quota never exceeds limit \\
+CONC-004 & Confirm vs expiry race & PASS & One terminal outcome and no double release \\
+INT-001 & Voucher failure rollback & PASS & Ticket inventory and voucher quota unchanged \\
+INT-002 & Historical price immutability & PASS & Existing booking snapshot unchanged after catalog update \\
 \bottomrule
 \end{longtable}
+
+The latest automated run passed 12 unit suites (31 tests), 7 integration suites
+(22 tests), and 4 concurrency suites (7 tests). The load baseline is 500
+requests at the stated steady/burst profile; p50/p95/p99 and system error rate
+are recorded in \code{docs/PERFORMANCE\_REPORT.md}.

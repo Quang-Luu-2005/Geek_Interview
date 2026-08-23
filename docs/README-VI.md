@@ -1,72 +1,37 @@
-# Template LaTeX - Concert Ticket Booking Backend Report
+# Documentation index (VI)
 
-Template này đã được custom riêng cho bài Product Backend Engineer Technical Assessment (Concert Ticket Booking Platform).
+Đây là mục lục tài liệu hiện hành của Ticket Booking Backend. Bắt đầu từ
+[README ở thư mục gốc](../README.md) hoặc [submission manifest](../submission/README.md)
+để có quick start và checklist bàn giao.
 
-## 1. Việc đầu tiên cần sửa
-Mở `config/commands.tex` và thay:
-- `YOUR NAME`
-- email
-- repository URL
-- version/date nếu cần
+## Tài liệu thiết kế
 
-## 2. Compile
-### Overleaf
-Upload toàn bộ folder/zip lên Overleaf và chọn `main.tex` làm Main document.
+- [System design](SYSTEM_DESIGN.md): kiến trúc, invariant, sequence, failure,
+  security và observability.
+- [Database design](DATABASE_DESIGN.md): schema, ERD, constraint/index và SQL
+  chống oversell/quota race/expiry race.
+- [ADR](adr/): các quyết định kiến trúc và trade-off.
+- [Diagrams](diagrams/): architecture, booking sequence, state machine và ERD.
 
-### Local
-Nếu có `pdflatex` + `bibtex`:
+## API và vận hành
 
-```bash
-make pdf
-```
+- [Customer API](API_CUSTOMER.md)
+- [Operation API](API_OPERATION.md)
+- [OpenAPI contract](../openapi/openapi.yaml)
+- [Postman runbook](../postman/README.md)
+- [Security assumptions](SECURITY_ASSUMPTIONS.md)
+- [Observability](OBSERVABILITY.md)
 
-Hoặc:
+## Kiểm thử và giới hạn
 
-```bash
-pdflatex main.tex
-bibtex main
-pdflatex main.tex
-pdflatex main.tex
-```
+- [Test strategy](TEST_STRATEGY.md)
+- [Performance report](PERFORMANCE_REPORT.md)
+- [Assumptions, scope and limitations](ASSUMPTIONS_SCOPE_LIMITATIONS.md)
+- [Coding guidelines](CODING_GUIDELINES.md)
+- [Test-results index](../test-results/README.md)
 
-## 3. Cấu trúc report
-- `00 Executive Summary`
-- `01 Problem Analysis and Requirements`
-- `02 Scope, Assumptions, Business Invariants`
-- `03 System Architecture`
-- `04 Database Design`
-- `05 Booking Workflow and Transaction Boundary`
-- `06 Concurrency and Overselling Prevention`
-- `07 Idempotency and Retry Safety`
-- `08 Voucher and Promotion Consistency`
-- `09 Booking Lifecycle and Reservation Expiry`
-- `10 API and Operation Workflows`
-- `11 Security, Reliability, Observability`
-- `12 Testing Strategy and Correctness Evidence`
-- `13 Performance and Flash-Sale Analysis`
-- `14 Architecture Decisions and Trade-offs`
-- `15 Implemented Scope, Limitations, Future Evolution`
-- `16 Conclusion`
-- Appendices: Local setup, API matrix, test evidence, ADRs
+## Long-form report
 
-## 4. Template đã có sẵn
-- Cover chuyên nghiệp
-- Header/footer
-- Table of contents / list of figures / list of tables / list of listings
-- Styled boxes: Decision / Business Invariant / Risk / Evidence
-- Code blocks cho SQL, HTTP, shell và JSON-like content
-- System architecture diagram bằng TikZ
-- Booking flow diagram bằng TikZ
-- Booking state machine bằng TikZ
-- Tables cho assumptions, test traceability, performance, trade-offs, API matrix
-- BibTeX entry cho assessment
-
-## 5. Khi code xong phải update
-- `chapters/15-limitations.tex`: trạng thái Planned -> Implemented / Partial / Out of scope
-- `chapters/13-performance.tex`: số liệu k6 thật
-- `appendices/C-test-evidence.tex`: kết quả CONC-001..004 và integration tests
-- `appendices/A-local-setup.tex`: command setup/run/test thật của repo
-- `appendices/B-api-matrix.tex`: endpoint thật đã implement
-
-## 6. Nguyên tắc
-Không để report mô tả feature như đã implement nếu code chưa có. Phân biệt rõ Current Implementation và Future Evolution.
+`main.tex` là nguồn LaTeX của báo cáo; các appendix trong `appendices/` được
+cập nhật theo implementation hiện tại. Biên dịch bằng `make -C docs pdf` khi
+cần bản PDF mới.

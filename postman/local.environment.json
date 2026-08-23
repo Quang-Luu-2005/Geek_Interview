@@ -1,0 +1,19 @@
+{
+  "id": "ticket-booking-local-environment",
+  "name": "Ticket Booking - Local Seed",
+  "values": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "default", "enabled": true },
+    { "key": "customerUserId", "value": "00000000-0000-4000-8000-000000000001", "type": "default", "enabled": true },
+    { "key": "operatorUserId", "value": "00000000-0000-4000-8000-000000000002", "type": "default", "enabled": true },
+    { "key": "concertId", "value": "summer-festival-2026", "type": "default", "enabled": true },
+    { "key": "concertUuid", "value": "00000000-0000-4000-8000-000000000010", "type": "default", "enabled": true },
+    { "key": "vipCategoryId", "value": "00000000-0000-4000-8000-000000000101", "type": "default", "enabled": true },
+    { "key": "standardCategoryId", "value": "00000000-0000-4000-8000-000000000102", "type": "default", "enabled": true },
+    { "key": "categoryId", "value": "00000000-0000-4000-8000-000000000102", "type": "default", "enabled": true },
+    { "key": "bookingId", "value": "", "type": "default", "enabled": true },
+    { "key": "idempotencyKey", "value": "postman-checkout-001", "type": "default", "enabled": true },
+    { "key": "voucherCode", "value": "FLASH10", "type": "default", "enabled": true }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_using": "Ticket Booking Backend Task 12"
+}

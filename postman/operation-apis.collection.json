@@ -17,7 +17,8 @@
         "method": "GET",
         "header": [{ "key": "x-user-id", "value": "{{operatorUserId}}" }],
         "url": "{{baseUrl}}/api/admin/bookings?status=RESERVED&page=1&limit=20"
-      }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const body = pm.response.json();", "const first = (body.data || [])[0];", "if (first && first.id) pm.environment.set('bookingId', first.id);", "pm.test('operator booking list succeeds', () => pm.expect(pm.response.code).to.eql(200));"] } }]
     },
     {
       "name": "Booking detail with audit",
@@ -55,7 +56,8 @@
           "raw": "{\n  \"slug\": \"winter-festival-2027\",\n  \"name\": \"Winter Festival 2027\",\n  \"startsAt\": \"2027-12-31T12:00:00.000Z\"\n}"
         },
         "url": "{{baseUrl}}/api/admin/concerts"
-      }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const body = pm.response.json();", "if (body.data && body.data.id) { pm.environment.set('concertUuid', body.data.id); pm.environment.set('concertId', body.data.id); }", "pm.test('draft concert created', () => pm.expect(pm.response.code).to.eql(201));"] } }]
     },
     {
       "name": "Create ticket category and inventory",
@@ -70,7 +72,8 @@
           "raw": "{\n  \"code\": \"STANDARD\",\n  \"name\": \"Standard\",\n  \"price\": 50,\n  \"totalQuantity\": 1000\n}"
         },
         "url": "{{baseUrl}}/api/admin/concerts/{{concertId}}/ticket-categories"
-      }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const body = pm.response.json();", "if (body.data && body.data.id) pm.environment.set('categoryId', body.data.id);", "pm.test('category created', () => pm.expect(pm.response.code).to.eql(201));"] } }]
     },
     {
       "name": "Publish concert",

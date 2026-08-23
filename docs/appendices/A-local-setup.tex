@@ -1,34 +1,63 @@
 \section{Prerequisites}
-Replace with the exact versions used by the final codebase.
-\begin{itemize}
-  \item Docker / Docker Compose
-  \item Runtime and package manager (for example Node.js + npm/pnpm, Java + Gradle/Maven, or .NET SDK)
-\end{itemize}
+The final repository uses Node.js 22 LTS, npm, Docker Desktop with the Linux
+engine, and PostgreSQL 16 through Docker Compose. The pinned runtime is in
+\code{.nvmrc}; dependencies are installed from the committed lockfile.
 
 \section{Quick Start}
-\begin{lstlisting}[language=bash,caption={Local quick-start template}]
+\begin{lstlisting}[language=bash,caption={Fresh local setup}]
 cp .env.example .env
-docker compose up -d
-
-# Replace with the real project commands
-<install command>
-<migrate command>
-<seed command>
-<start command>
+npm ci
+npm run db:migrate
+npm run db:seed
+npm run start:dev
 \end{lstlisting}
 
+For the fully reproducible API + database workflow:
+
+\begin{lstlisting}[language=bash,caption={Docker Compose setup}]
+docker compose up --build
+curl http://localhost:3000/health
+\end{lstlisting}
+
+If host ports are occupied, set \code{API\_HOST\_PORT} and
+\code{POSTGRES\_HOST\_PORT} in \code{.env}. The API remains port 3000 inside
+the Compose network.
+
+\section{Seeded local identities}
+Fresh databases use stable development identities:
+
+\begin{itemize}[nosep,leftmargin=*]
+  \item customer: \code{00000000-0000-4000-8000-000000000001};
+  \item operator: \code{00000000-0000-4000-8000-000000000002};
+  \item concert slug: \code{summer-festival-2026};
+  \item standard category: \code{00000000-0000-4000-8000-000000000102}.
+\end{itemize}
+
+The identity header is a documented development simplification, not a real
+access token. Reset an existing local volume once after upgrading seed IDs:
+\code{npm run db:reset}.
+
 \section{Verification}
-\begin{itemize}
-  \item Health endpoint: \apiendpoint{GET /health}
-  \item OpenAPI contract: \apiendpoint{GET /openapi.yaml} (machine-readable YAML)
-  \item Seeded customer/operator credentials: document them here if safe for local assessment use
+\begin{itemize}[nosep,leftmargin=*]
+  \item Health: \code{GET /health} (HTTP 200 when PostgreSQL is reachable);
+  \item OpenAPI: \code{GET /openapi.yaml};
+  \item Metrics: \code{GET /metrics};
+  \item Postman: import \code{postman/local.environment.json} and one of the
+  customer/operation collections.
 \end{itemize}
 
 \section{Test Commands}
-\begin{lstlisting}[language=bash,caption={Quality-gate command template}]
-<lint command>
-<unit test command>
-<integration test command>
-<concurrency test command>
-<load test command>
+\begin{lstlisting}[language=bash,caption={Final quality gates}]
+npm run format:check
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run db:migrate && npm run db:seed
+npm run test:integration
+npm run test:concurrency
+npm run test:load
 \end{lstlisting}
+
+The load command requires k6 or Docker and writes the reproducible summary to
+\code{docs/PERFORMANCE\_REPORT.md}. See \code{docs/TEST\_STRATEGY.md} for the
+invariant-to-test mapping.

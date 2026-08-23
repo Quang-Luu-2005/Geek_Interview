@@ -32,7 +32,7 @@ sequenceDiagram
         alt Sold out
             DB-->>Inventory: 0 rows
             Booking->>DB: ROLLBACK
-            Booking-->>API: INVENTORY_EXHAUSTED
+            Booking-->>API: INSUFFICIENT_TICKET_INVENTORY
             API-->>Customer: 409 Conflict
         else Voucher supplied
             Booking->>Voucher: Reserve eligibility and quota

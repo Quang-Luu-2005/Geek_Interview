@@ -6,6 +6,13 @@ This document records the architecture decisions completed in Trello list
 `01 - Architecture & Design`. It describes the current assessment baseline,
 not future infrastructure presented as already implemented.
 
+Related evidence: [ADR-001 modular monolith](adr/001-use-modular-monolith.md),
+[ADR-002 PostgreSQL](adr/002-use-postgresql.md),
+[ADR-003 atomic inventory](adr/003-atomic-inventory-update.md),
+[ADR-004 idempotent booking](adr/004-idempotent-booking-api.md),
+[database design](DATABASE_DESIGN.md), [API contracts](API_CUSTOMER.md), and
+[test/performance evidence](TEST_STRATEGY.md).
+
 ## Architecture summary
 
 The system is a modular monolith exposing a stateless REST API. PostgreSQL is
@@ -28,6 +35,18 @@ Current modules:
 The dependency direction is `Controller -> Application/Use Case -> Domain and
 Repository ports -> Infrastructure`. Controllers map HTTP concerns only; they
 do not open transactions or implement business rules.
+
+## Decision rationale and trade-offs
+
+| Decision | Alternative considered | Why this baseline | Downside accepted |
+|---|---|---|---|
+| Modular monolith | Independently deployed services | Keeps booking, inventory, voucher and idempotency in one transaction boundary with low operational overhead | Modules scale and deploy together until a measured bottleneck justifies extraction |
+| PostgreSQL as source of truth | Cache/NoSQL-first inventory | Conditional updates, row locks, constraints and audit history directly express the invariants | Hot rows and a single write region require careful indexing and later partitioning if scale demands it |
+| Atomic SQL reservation | Read stock, then write later | The database arbitrates the last-ticket race; no application timing gap | Repository SQL is more explicit and must be covered by integration/concurrency tests |
+| Database idempotency records | Process memory or cache keys | Replay survives process restarts and shares the booking transaction | Records need retention/cleanup policy and add a write to every logical request |
+
+The detailed alternatives are captured in the linked ADRs and the long-form
+trade-off chapter (`chapters/14-tradeoffs.tex`).
 
 ## Booking transaction boundary
 
@@ -54,7 +73,7 @@ BEGIN
   validate concert is published and bookable
   for category in sort(category_ids):
     conditional inventory decrement
-    if zero rows: raise INVENTORY_EXHAUSTED
+    if zero rows: raise INSUFFICIENT_TICKET_INVENTORY
   if voucher supplied:
     validate eligibility
     conditional quota decrement
@@ -89,7 +108,7 @@ consistent queries.
 
 | Scenario | Database/application rule | Expected outcome |
 |---|---|---|
-| Two users reserve the last ticket | Conditional inventory update requires `available_quantity >= qty` | One succeeds; the other receives `INVENTORY_EXHAUSTED`; stock never negative |
+| Two users reserve the last ticket | Conditional inventory update requires `available_quantity >= qty` | One succeeds; the other receives `INSUFFICIENT_TICKET_INVENTORY`; stock never negative |
 | Same user retries same key | Unique idempotency scope plus fingerprint | One booking; later same-payload requests replay it |
 | Same key with changed payload | Compare stored fingerprint | `IDEMPOTENCY_KEY_REUSED` (`409`); no new mutation |
 | Last voucher raced by many users | Conditional `used_count < usage_limit` update | At most quota successes; rejected attempts roll back their booking |

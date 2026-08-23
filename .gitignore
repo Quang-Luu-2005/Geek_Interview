@@ -29,6 +29,8 @@ postman/*local*
 postman/*private*
 postman/*secret*
 postman/*.backup.json
+# This deterministic reviewer environment contains no credentials or tokens.
+!postman/local.environment.json
 
 # ============================================================
 # Dependencies and package-manager caches
@@ -188,4 +190,3 @@ $RECYCLE.BIN/
 *.tfstate.*
 .serverless/
 .aws-sam/
-

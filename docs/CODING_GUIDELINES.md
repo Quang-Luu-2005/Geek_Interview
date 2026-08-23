@@ -51,3 +51,30 @@ booking transaction.
 6. Add unit tests for pure rules and integration tests for database behavior.
 7. Run `npm run format:check`, `npm run lint`, `npm run typecheck`, and the
    relevant test command.
+
+### API addition checklist
+
+Use this order for a new endpoint:
+
+```text
+request DTO -> controller boundary -> application use case -> repository port
+-> infrastructure SQL -> OpenAPI path/schema -> Postman example
+-> unit policy test -> PostgreSQL integration test -> README/API matrix link
+```
+
+Before opening a PR, verify that the endpoint has:
+
+- explicit actor/ownership and stable error codes;
+- `class-validator` DTO constraints with `whitelist` and
+  `forbidNonWhitelisted` behavior covered;
+- one transaction boundary when multiple correctness-sensitive writes are
+  involved;
+- an OpenAPI request/response/error example and a runnable Postman request;
+- a unit test for deterministic rules and an integration test for persisted
+  state; concurrency behavior belongs in `tests/concurrency/`;
+- updated documentation only where the public behavior changed, plus a link
+  from the reviewer-first README map.
+
+Do not commit real credentials, generated build output, database dumps, or raw
+machine-specific load artifacts. Keep reproducible summaries in `docs/` and
+retain the command, environment and commit SHA used to produce them.

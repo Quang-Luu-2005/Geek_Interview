@@ -2,8 +2,36 @@
 
 Backend for the 48-hour technical assessment. The repository establishes the
 modular-monolith boundaries, PostgreSQL consistency boundary, reproducible
-migration/seed flow, customer APIs, atomic booking, retry safety, and quality
-gates.
+migration/seed flow, customer APIs, atomic booking, retry safety, and
+evidence-driven quality gates.
+
+## Reviewer-first map
+
+| Need | Start here |
+|---|---|
+| Run the service | [Local setup](#local-setup) or [Docker setup](#docker-setup) |
+| Understand the design | [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) |
+| Understand the schema/locking | [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) |
+| Try the API | [openapi/openapi.yaml](openapi/openapi.yaml), [Postman environment](postman/local.environment.json) |
+| Verify correctness | [docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md) |
+| Review measured performance | [docs/PERFORMANCE_REPORT.md](docs/PERFORMANCE_REPORT.md) |
+| Check scope and limitations | [docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md](docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md) |
+| See the submission tree | [submission/README.md](submission/README.md) |
+
+## Problem and architecture snapshot
+
+The service reserves concert tickets by category during flash-sale-like
+contention. A booking must never oversell inventory, a client retry must not
+create a second booking, voucher quota must remain bounded, and an abandoned
+reservation must release its resources. The implementation is a stateless
+NestJS modular monolith with PostgreSQL as the correctness boundary: HTTP
+controllers call application use cases, repositories perform the atomic SQL,
+and a small expiry worker reuses the booking transaction path.
+
+The current identity boundary is the validated `x-user-id` header for this
+assessment; production authentication and distributed infrastructure are
+explicitly documented as future evolution in
+[ASSUMPTIONS_SCOPE_LIMITATIONS.md](docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md).
 
 ## Prerequisites
 
@@ -24,12 +52,14 @@ npm run start:dev
 
 The health endpoint is `GET http://localhost:3000/health`. It returns `503` when
 the database cannot be reached. The `/api` prefix is reserved for business APIs.
-The static OpenAPI contract is available at `http://localhost:3000/openapi.yaml`;
+This assessment exposes a static, machine-readable OpenAPI contract rather than
+an interactive Swagger UI: it is available at
+`http://localhost:3000/openapi.yaml`;
 Prometheus-compatible counters are at `http://localhost:3000/metrics`.
 
 ## Customer read APIs
 
-Tasks 04–05 implement the published-concert browse/detail flow, ticket category
+Tasks 04-05 implement the published-concert browse/detail flow, ticket category
 price/availability reads, ownership-scoped booking history/detail, and the
 atomic `POST /api/bookings` reservation path. See
 [docs/API_CUSTOMER.md](docs/API_CUSTOMER.md) for response contracts and the
@@ -40,10 +70,12 @@ Operation/admin workflows are documented in
 [Postman collection](postman/operation-apis.collection.json). They require the
 seeded operator UUID in `x-user-id`.
 
-Until the authentication task adds a real access-token guard, booking reads use
-the seeded customer's UUID in an `x-user-id` header. The SQL query always
+Authentication is intentionally simplified for this assessment: booking reads
+use the seeded customer's UUID in an `x-user-id` header. The SQL query always
 enforces that ownership predicate; an unknown or cross-user booking returns
-`404` to avoid existence leaks.
+`404` to avoid existence leaks. See
+[docs/SECURITY_ASSUMPTIONS.md](docs/SECURITY_ASSUMPTIONS.md) for the production
+evolution path.
 
 Task 10 documents the current security simplification in
 [docs/SECURITY_ASSUMPTIONS.md](docs/SECURITY_ASSUMPTIONS.md) and the structured
@@ -103,6 +135,28 @@ k6 binary when available and otherwise Docker image `grafana/k6:0.53.0`; set
 [docs/PERFORMANCE_REPORT.md](docs/PERFORMANCE_REPORT.md) for evidence and
 interpretation rules.
 
+## Five-minute correctness demo
+
+With the API running and the seeded database reset, these calls demonstrate the
+happy path and the retry contract. The response from the first call contains the
+booking ID used by the next calls; Postman automates this variable hand-off.
+
+```bash
+curl http://localhost:3000/api/concerts/summer-festival-2026/ticket-categories
+
+curl -X POST http://localhost:3000/api/bookings \
+  -H 'content-type: application/json' \
+  -H 'x-user-id: 00000000-0000-4000-8000-000000000001' \
+  -H 'Idempotency-Key: reviewer-demo-001' \
+  -d '{"concertId":"summer-festival-2026","items":[{"ticketCategoryId":"00000000-0000-4000-8000-000000000102","quantity":1}]}'
+
+# Repeat the exact POST above: it replays the same booking instead of
+# decrementing inventory a second time.
+```
+
+For concurrency and expiry behavior, run `npm run test:concurrency`; for the
+full request-by-request flow, use the [Postman runbook](postman/README.md).
+
 ## Repository conventions
 
 See [docs/CODING_GUIDELINES.md](docs/CODING_GUIDELINES.md) for module boundaries,
@@ -113,5 +167,22 @@ decisions and current architecture are in [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DE
 
 The seed is deterministic and safe to run repeatedly. It provides a customer,
 operator, one published concert with VIP/Standard inventory, and active,
-exhausted, and expired voucher examples. IDs are resolved through stable natural
-keys in the seed script rather than being required by API clients.
+exhausted, and expired voucher examples. Fresh databases use these stable IDs:
+
+| Variable | Value |
+|---|---|
+| `customerUserId` | `00000000-0000-4000-8000-000000000001` |
+| `operatorUserId` | `00000000-0000-4000-8000-000000000002` |
+| `concertUuid` | `00000000-0000-4000-8000-000000000010` |
+| `vipCategoryId` | `00000000-0000-4000-8000-000000000101` |
+| `standardCategoryId` | `00000000-0000-4000-8000-000000000102` |
+
+The customer API also accepts the stable concert slug
+`summer-festival-2026`. Existing local volumes should be reset once after
+upgrading the seed IDs: `npm run db:reset`.
+
+## Submission package
+
+The canonical source remains organized by purpose rather than copied into a
+second tree. [submission/README.md](submission/README.md) maps every required
+deliverable to its source path and records the final verification checklist.

@@ -1,5 +1,5 @@
-\begin{longtable}{p{0.11\textwidth}p{0.36\textwidth}p{0.16\textwidth}p{0.26\textwidth}}
-\caption{API endpoint matrix}\label{tab:api-matrix}\\
+\begin{longtable}{p{0.11\textwidth}p{0.38\textwidth}p{0.16\textwidth}p{0.25\textwidth}}
+\caption{Implemented API endpoint matrix}\label{tab:api-matrix}\\
 \toprule
 \textbf{Method} & \textbf{Endpoint} & \textbf{Actor} & \textbf{Notes} \\
 \midrule
@@ -8,16 +8,27 @@
 \textbf{Method} & \textbf{Endpoint} & \textbf{Actor} & \textbf{Notes} \\
 \midrule
 \endhead
-GET & /concerts & Customer & Published concerts \\
-GET & /concerts/\{id\} & Customer & Concert detail \\
+GET & /health & Public & Database health \\
+GET & /metrics & Public & Prometheus text counters \\
+GET & /openapi.yaml & Public & Machine-readable API contract \\
+GET & /concerts & Customer & Published concerts, pagination \\
+GET & /concerts/\{id\} & Customer & UUID or slug detail \\
 GET & /concerts/\{id\}/ticket-categories & Customer & Price + informational availability \\
 POST & /bookings & Customer & Idempotency-Key; atomic reservation \\
-GET & /bookings/\{id\} & Customer & Ownership enforced \\
-GET & /me/bookings & Customer & Booking history \\
-GET & /admin/bookings & Operator & Filter/paginate \\
-GET & /admin/bookings/\{id\} & Operator & Investigation detail \\
-PATCH & /admin/bookings/\{id\}/status & Operator & Guarded transition + reason \\
-POST & /admin/concerts & Operator & Optional/minimal scope \\
-POST & /admin/vouchers & Operator & Optional/minimal scope \\
+GET & /me/bookings & Customer & Ownership-scoped history \\
+GET & /bookings/\{id\} & Customer & Ownership-scoped detail \\
+POST & /bookings/\{id\}/confirm & Customer & Conditional lifecycle transition \\
+POST & /bookings/\{id\}/cancel & Customer & Conditional release transition \\
+GET & /admin/bookings & Operator/Admin & Filter and paginate \\
+GET & /admin/bookings/\{id\} & Operator/Admin & Investigation detail + audit \\
+PATCH & /admin/bookings/\{id\}/status & Operator/Admin & Guarded manual transition \\
+POST & /admin/concerts & Operator/Admin & Create draft concert \\
+POST & /admin/concerts/\{id\}/ticket-categories & Operator/Admin & Create inventory-backed category \\
+POST & /admin/concerts/\{id\}/publish & Operator/Admin & Publish valid future concert \\
+POST & /admin/vouchers & Operator/Admin & Create scoped promotion \\
 \bottomrule
 \end{longtable}
+
+The public paths are mounted under the application \code{/api} prefix except
+for the health, metrics and OpenAPI routes, which are intentionally excluded
+from that prefix.

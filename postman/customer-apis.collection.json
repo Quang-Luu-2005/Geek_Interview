@@ -14,7 +14,8 @@
   "item": [
     {
       "name": "Browse published concerts",
-      "request": { "method": "GET", "url": "{{baseUrl}}/api/concerts?page=1&limit=20" }
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/concerts?page=1&limit=20" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const body = pm.response.json();", "if (body.data && body.data[0]) pm.environment.set('concertId', body.data[0].slug);", "pm.test('published concert browse succeeds', () => pm.expect(pm.response.code).to.eql(200));"] } }]
     },
     {
       "name": "Concert detail",
@@ -22,23 +23,8 @@
     },
     {
       "name": "Ticket categories and availability",
-      "request": { "method": "GET", "url": "{{baseUrl}}/api/concerts/{{concertId}}/ticket-categories" }
-    },
-    {
-      "name": "Current user's booking history",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
-        "url": "{{baseUrl}}/api/me/bookings?page=1&limit=20"
-      }
-    },
-    {
-      "name": "Owned booking detail",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
-        "url": "{{baseUrl}}/api/bookings/{{bookingId}}"
-      }
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/concerts/{{concertId}}/ticket-categories" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const body = pm.response.json();", "const standard = (body.categories || []).find((item) => item.code === 'STANDARD');", "if (standard) pm.environment.set('standardCategoryId', standard.id);", "pm.test('category lookup succeeds', () => pm.expect(pm.response.code).to.eql(200));"] } }]
     },
     {
       "name": "Create booking",
@@ -54,6 +40,91 @@
           "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"items\": [{ \"ticketCategoryId\": \"{{standardCategoryId}}\", \"quantity\": 1 }]\n}"
         },
         "url": "{{baseUrl}}/api/bookings"
+      },
+      "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.environment.set('idempotencyKey', `postman-${Date.now()}`);"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["const body = pm.response.json();", "if (body.data && body.data.id) pm.environment.set('bookingId', body.data.id);", "pm.test('booking response is created or replayed', () => pm.expect([201, 200]).to.include(pm.response.code));"] } }]
+    },
+    {
+      "name": "Retry same booking (idempotent replay)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{customerUserId}}" },
+          { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"items\": [{ \"ticketCategoryId\": \"{{standardCategoryId}}\", \"quantity\": 1 }]\n}"
+        },
+        "url": "{{baseUrl}}/api/bookings"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const body = pm.response.json();", "if (body.data && body.data.id) pm.test('replay keeps booking id', () => pm.expect(body.data.id).to.eql(pm.environment.get('bookingId')));", "pm.test('retry is success or replay', () => pm.expect([200, 201]).to.include(pm.response.code));"] } }]
+    },
+    {
+      "name": "Voucher booking example",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{customerUserId}}" },
+          { "key": "Idempotency-Key", "value": "voucher-{{idempotencyKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"voucherCode\": \"{{voucherCode}}\",\n  \"items\": [{ \"ticketCategoryId\": \"{{standardCategoryId}}\", \"quantity\": 1 }]\n}"
+        },
+        "url": "{{baseUrl}}/api/bookings"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('voucher path returns created or documented conflict', () => pm.expect([201, 409]).to.include(pm.response.code));"] } }]
+    },
+    {
+      "name": "Reserve VIP inventory (sold-out demo setup)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{customerUserId}}" },
+          { "key": "Idempotency-Key", "value": "soldout-setup-{{idempotencyKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"items\": [{ \"ticketCategoryId\": \"{{vipCategoryId}}\", \"quantity\": 10 }]\n}"
+        },
+        "url": "{{baseUrl}}/api/bookings"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('VIP setup booking created', () => pm.expect([201, 200]).to.include(pm.response.code));"] } }]
+    },
+    {
+      "name": "Sold-out conflict after VIP stock is held",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "content-type", "value": "application/json" },
+          { "key": "x-user-id", "value": "{{customerUserId}}" },
+          { "key": "Idempotency-Key", "value": "soldout-reject-{{idempotencyKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"items\": [{ \"ticketCategoryId\": \"{{vipCategoryId}}\", \"quantity\": 1 }]\n}"
+        },
+        "url": "{{baseUrl}}/api/bookings"
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('sold-out is a controlled conflict', () => pm.expect(pm.response.code).to.eql(409));"] } }]
+    },
+    {
+      "name": "Current user's booking history",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
+        "url": "{{baseUrl}}/api/me/bookings?page=1&limit=20"
+      }
+    },
+    {
+      "name": "Owned booking detail",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
+        "url": "{{baseUrl}}/api/bookings/{{bookingId}}"
       }
     },
     {

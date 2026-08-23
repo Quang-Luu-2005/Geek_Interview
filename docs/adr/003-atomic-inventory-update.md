@@ -18,8 +18,8 @@ WHERE ticket_category_id = :category_id
 RETURNING ticket_category_id, available_quantity;
 ```
 
-The use case treats zero returned rows as the stable `INVENTORY_EXHAUSTED`
-business error. It never reads stock, calculates a new value in application
+The use case treats zero returned rows as the stable
+`INSUFFICIENT_TICKET_INVENTORY` business error. It never reads stock, calculates a new value in application
 memory, and then writes it back.
 
 ## Consequences
