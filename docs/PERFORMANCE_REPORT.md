@@ -1,6 +1,6 @@
 # Performance Report
 
-Generated at **2026-08-23T04:14:57.294Z** from commit **488e97d4f5314e73cf5670b9651b86574a0902fe**.
+Generated at **2026-08-23T07:19:15.385Z** from commit **dfd8bcb8e2cb9cec15a2a7bcb02e3c771a3d529d**.
 
 ## Reproduction
 
@@ -17,22 +17,25 @@ The runner resolves the seeded customer and STANDARD category automatically. It 
 | Field | Value |
 |---|---|
 | API base URL | `http://host.docker.internal:3300` |
+| Runtime | `win32/x64, v22.17.1` |
+| Load engine | `grafana/k6:0.53.0` via Docker |
+| PostgreSQL | `PostgreSQL 16.14 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit` |
 | Concert | `summer-festival-2026` |
-| Workload | steady 2 req/s, then burst 5 req/s |
-| Steady duration | `5s` |
-| Burst stages | 3 × `2s` |
-| Commit | `488e97d4f5314e73cf5670b9651b86574a0902fe` |
+| Workload | steady 5 req/s, then burst 15 req/s |
+| Steady duration | `30s` |
+| Burst stages | 3 × `10s` |
+| Commit | `dfd8bcb8e2cb9cec15a2a7bcb02e3c771a3d529d` |
 
 ## Results
 
 | Metric | Result |
 |---|---:|
-| Requests | 39 |
-| Throughput | 4 req/s |
-| p50 latency | 10.80 ms |
-| p95 latency | 27.55 ms |
-| p99 latency | 43.93 ms |
-| Booking successes | 39 |
+| Requests | 500 |
+| Throughput | 8 req/s |
+| p50 latency | 13.01 ms |
+| p95 latency | 23.59 ms |
+| p99 latency | 34.02 ms |
+| Booking successes | 500 |
 | Expected business rejects (400/409/429) | 0 |
 | System error rate | 0.000% |
 

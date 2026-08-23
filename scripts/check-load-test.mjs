@@ -189,9 +189,21 @@ async function writePerformanceReport(context, baseUrl, useDocker) {
   const report = `# Performance Report\n\nGenerated at **${generatedAt}** from commit **${sha}**.\n\n## Reproduction\n\n\`\`\`bash\nDATABASE_URL=postgresql://ticket:ticket@localhost:5432/ticket_booking \\\nnpm run db:migrate && npm run db:seed \\\nRATE_LIMIT_BOOKING_MAX=1000 BASE_URL=http://localhost:3000 npm run test:load\n\`\`\`\n\nThe runner resolves the seeded customer and STANDARD category automatically. It uses a native k6 binary when available, otherwise Docker image \`grafana/k6:0.53.0\`. Reset the local database after a run if the booking rows are not disposable.\n\n## Environment and scenarios\n\n| Field | Value |\n|---|---|\n| API base URL | \`${baseUrl}\` |\n| Concert | \`${context.concertId}\` |\n| Workload | steady ${process.env.K6_STEADY_RATE || 5} req/s, then burst ${process.env.K6_BURST_TARGET_RATE || 15} req/s |\n| Steady duration | \`${process.env.K6_STEADY_DURATION || '30s'}\` |\n| Burst stages | 3 × \`${process.env.K6_BURST_STAGE_DURATION || '10s'}\` |\n| Commit | \`${sha}\` |\n\n## Results\n\n| Metric | Result |\n|---|---:|\n| Requests | ${formatNumber(duration.count)} |\n| Throughput | ${formatNumber(duration.rate)} req/s |\n| p50 latency | ${formatMs(duration.med)} |\n| p95 latency | ${formatMs(duration['p(95)'])} |\n| p99 latency | ${formatMs(duration['p(99)'])} |\n| Booking successes | ${formatNumber(successes.count)} |\n| Expected business rejects (400/409/429) | ${formatNumber(businessRejects.count)} |\n| System error rate | ${formatPercent(systemErrorRate.rate)} |\n\n## Interpretation\n\nBusiness rejects are not counted as system failures because sold-out, validation and rate-limit responses are expected outcomes under contention. A non-zero system error rate indicates an HTTP 5xx, auth/configuration failure, or another unexpected status and should block a performance claim. This report is a local reproducibility baseline, not a capacity guarantee; CPU, memory, database locality and Docker networking materially affect the numbers.\n`;
 
   const environmentRows = `| Runtime | \`${process.platform}/${process.arch}, ${process.version}\` |\n| Load engine | ${useDocker ? '`grafana/k6:0.53.0` via Docker' : '`k6` binary'} |\n| PostgreSQL | \`${context.databaseVersion || 'not queried'}\` |\n`;
+  const oldCommands =
+    'DATABASE_URL=postgresql://ticket:ticket@localhost:5432/ticket_booking \\\n' +
+    'npm run db:migrate && npm run db:seed \\\n' +
+    'RATE_LIMIT_BOOKING_MAX=1000 BASE_URL=http://localhost:3000 npm run test:load';
+  const portableCommands = [
+    'export DATABASE_URL=postgresql://ticket:ticket@localhost:5432/ticket_booking',
+    'export RATE_LIMIT_BOOKING_MAX=1000',
+    'export BASE_URL=http://localhost:3000',
+    'npm run db:migrate && npm run db:seed',
+    'npm run test:load',
+  ].join('\n');
   const normalizedReport = report
     .replace(`| API base URL | \`${baseUrl}\` |\n`, `| API base URL | \`${baseUrl}\` |\n${environmentRows}`)
-    .replaceAll('Ă—', 'x');
+    .replace(oldCommands, portableCommands)
+    .replace(/\| Burst stages \| 3 . `([^`]+)` \|/, '| Burst stages | 3 x `$1` |');
   await writeFile(reportFile, normalizedReport, 'utf8');
 }
 
