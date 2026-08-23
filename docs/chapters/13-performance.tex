@@ -65,13 +65,6 @@ pool limits, and the non-hot STANDARD category materially influence the result.
 Before a production claim, execute longer steady-state and soak tests; isolate
 sold-out and single-hot-category latency; measure final-voucher contention;
 capture database connection/lock wait/CPU/I/O; and repeat with the intended
-deployment topology and shared rate limiter.
-
-\section{Optimization Priorities}
-\begin{enumerate}
-  \item preserve short booking transactions and deterministic resource order;
-  \item monitor connection saturation, lock waits, and the expiry index before scaling API replicas;
-  \item keep controlled sold-out/voucher/rate-limit outcomes separate from 5xx;
-  \item avoid every external network call inside finite-resource transactions;
-  \item introduce admission control, partitioning, or queueing only after hot-row evidence justifies it.
-\end{enumerate}
+deployment topology and shared rate limiter. Optimization should preserve short
+transactions and deterministic resource order; admission control, partitioning,
+or queueing needs measured hot-row evidence.

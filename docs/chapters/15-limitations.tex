@@ -1,63 +1,89 @@
-\section{Implemented Scope Matrix}
+\label{ch:payment-scope}
+\section{Implemented and Omitted Scope}
 
-\begin{longtable}{p{0.42\textwidth}p{0.18\textwidth}p{0.30\textwidth}}
-\caption{Implementation scope}\label{tab:scope-matrix}\\
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\begin{longtable}{p{0.30\textwidth}p{0.16\textwidth}p{0.46\textwidth}}
+\caption{Reviewer-facing implementation scope}\\
 \toprule
-\textbf{Capability} & \textbf{Status} & \textbf{Notes} \\
+\textbf{Capability} & \textbf{Status} & \textbf{Boundary} \\
 \midrule
 \endfirsthead
 \toprule
-\textbf{Capability} & \textbf{Status} & \textbf{Notes} \\
+\textbf{Capability} & \textbf{Status} & \textbf{Boundary} \\
 \midrule
 \endhead
-Concert browsing & Implemented & Published customer browse/detail/categories \\
-Ticket category and availability & Implemented & Informational snapshot; booking rechecks atomically \\
-Create booking & Implemented & Server pricing, inventory, voucher and persistence are atomic \\
-Idempotent retries & Implemented & User-scoped key, canonical fingerprint and replay \\
-Voucher validation/quota & Implemented & Eligibility, quota race, redemption and release \\
-Reservation expiry & Implemented & Polling worker with transactional release and SKIP LOCKED \\
-Operation booking monitoring & Implemented & Filter/list/detail with role guard and safe metadata \\
-Manual guarded status transition & Implemented & State machine, resource release and audit history \\
-Concert/category create and publish & Implemented & Draft creation, inventory-backed category, guarded publication \\
-Voucher create API & Implemented & Percentage/fixed policy with time, quota, and optional scope \\
-Concert/voucher update or delete & Not implemented & Historical/versioning semantics intentionally unspecified \\
-Payment/refund settlement & Out of scope & Confirmation is simulated; provider integration is future work \\
-Seat-level reservation & Out of scope & Current model reserves category capacity only \\
-Refunds/chargebacks/reconciliation & Out of scope & Depend on a future payment integration \\
-Email/SMS notification & Not implemented & Future post-commit/outbox consumer \\
-Distributed rate limiting/metrics & Partial & Current process-local policy; production evolution is Redis/gateway + telemetry \\
-Multi-region active-active & Out of scope & PostgreSQL is the single correctness boundary \\
+Concert browse and availability & Implemented & Published concerts; availability is informational and rechecked during booking \\
+Atomic booking and retry safety & Implemented & Server prices, inventory, optional voucher, persistence, and idempotency share one transaction \\
+Voucher create and redemption & Implemented & Percentage/fixed, time, quota, and optional concert/category scope \\
+Voucher update/delete & Not implemented & Historical and versioning semantics are intentionally omitted \\
+Reservation lifecycle and expiry & Implemented & Guarded terminal transitions and exactly-once release \\
+Operation workflows & Implemented & Monitor bookings, guarded status change, concert/category create and publish \\
+Real payment processing & Out of scope & Confirmation is simulated; no provider or financial settlement \\
+Seat-level allocation & Out of scope & Inventory is category-level capacity \\
+Notifications and asynchronous events & Not implemented & Future post-commit integration \\
+Multi-region and distributed controls & Out of scope & PostgreSQL is the single consistency boundary; limiter and metrics are process-local \\
 \bottomrule
 \end{longtable}
+\endgroup
 
-\section{Known Limitations and Evolution}
+\section{Known Limitations}
+The current identity header is an assessment mechanism rather than production
+authentication. Confirmation does not prove payment, inventory is not
+seat-specific, and the process-local limiter/metrics need shared infrastructure
+for multiple API replicas. The polling expiry worker provides bounded rather
+than instantaneous expiry. Detailed assumptions remain in
+\nolinkurl{docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md}.
 
-The current identity header, simulated payment, category-level inventory,
-process-local rate limiter/metrics, and polling expiry worker are deliberate
-assessment trade-offs. Their operational impact and production evolution path
-are recorded in \nolinkurl{docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md}. None of these
-limitations relaxes the critical invariants: inventory cannot oversell,
-idempotent retries cannot double-book, voucher quota cannot over-redeem, and
-expiry cannot double-release resources.
+These limitations do not weaken the submitted guarantees: inventory cannot
+oversell, one idempotent intent cannot double-book, voucher quota cannot
+over-redeem, and competing terminal transitions cannot release resources twice.
 
-\section{Feature Scope: Voucher Operations}
-\subsection{Assumption}
-The assessment requires voucher behavior needed by the booking flow, not a full
-campaign-management product.
+\section{Payment Processing Scope}
+Real payment processing is outside the assessment scope. The implementation
+provides payment-adjacent behavior: a time-limited \code{RESERVED} booking,
+immutable totals, conditional \code{RESERVED -> CONFIRMED}, cancellation or
+expiry, exactly-once resource release, and retry-safe booking creation.
 
-\subsection{Implemented}
-Operators/admins can create validated percentage or fixed vouchers with a time
-window, global quota, and optional concert/category scope. Customers can apply
-them atomically during booking; expiry/cancellation can release reserved quota.
+There is no provider client, payment session, authorization/capture, webhook
+verification, payment-state table, settlement, refund, chargeback, or
+reconciliation. A future flow is deliberately separated from the current
+transaction:
 
-\subsection{Not Implemented}
-Voucher update, disable-through-API, delete, bulk import, campaign analytics,
-and policy versioning endpoints are absent.
+\begin{center}
+\small
+\code{Reserve + commit RESERVED} $\rightarrow$
+\code{External gateway} $\rightarrow$
+\code{Verified webhook} $\rightarrow$
+\code{New transaction} $\rightarrow$
+\code{Conditional confirm}
+\end{center}
 
-\subsection{Reason, Consequence, and Production Evolution}
-Mutation/deletion after redemption needs explicit historical and authorization
-rules, so it was omitted rather than implemented ambiguously. The consequence
-is that an existing campaign cannot be administered through this API. A
-production extension should add immutable voucher versions, audit every
-administrative change, define disable semantics for existing reservations, and
-protect elevated commands with production identity and approval policy.
+\begin{decisionbox}[External-call boundary]
+Never keep the booking/inventory transaction open while calling an external
+payment provider. Provider interaction occurs after commit; its verified result
+is handled idempotently in a new transaction and cannot overwrite an already
+expired or cancelled booking.
+\end{decisionbox}
+
+\section{Decision Summary and Revisit Triggers}
+Full ADRs remain under \nolinkurl{docs/adr/}; the report keeps only the triggers
+that could invalidate today's choices.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Architecture revisit triggers}
+\begin{tabularx}{\textwidth}{p{0.27\textwidth}Y}
+\toprule
+\textbf{Decision} & \textbf{Revisit when} \\
+\midrule
+Modular monolith & A module needs independent ownership/deployment/scaling and its consistency boundary can be separated \\
+PostgreSQL atomic inventory & Measured hot-row waits or write-region limits violate the target SLO \\
+Database idempotency & Retention volume or cross-region replay requires a dedicated lifecycle/storage strategy \\
+Polling expiry worker & Poll delay, scan cost, or worker volume justifies broker scheduling \\
+Outbox remains optional & A real payment, notification, or analytics consumer requires guaranteed post-commit publication \\
+\bottomrule
+\end{tabularx}
+\end{table}

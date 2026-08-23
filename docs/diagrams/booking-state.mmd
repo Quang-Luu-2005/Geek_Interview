@@ -1,21 +1,11 @@
 stateDiagram-v2
-    [*] --> RESERVED: booking created\nresources reserved
+    direction LR
+    [*] --> RESERVED: booking created / resources reserved
 
-    RESERVED --> CONFIRMED: confirm\n[expires_at > now]
-    RESERVED --> EXPIRED: expiry worker\n[expires_at <= now]
-    RESERVED --> CANCELLED: customer/operator cancel\n[expires_at > now]
+    RESERVED --> CONFIRMED: confirm [expires_at > now]
+    RESERVED --> EXPIRED: worker [expires_at <= now] / release once
+    RESERVED --> CANCELLED: cancel [live reservation] / release once
 
+    CONFIRMED --> [*]
     EXPIRED --> [*]
     CANCELLED --> [*]
-
-    note right of RESERVED
-      Confirm, expire, and cancel use
-      conditional UPDATE WHERE status = RESERVED.
-      Confirm also requires expires_at > NOW().
-      Exactly one racer changes the row.
-    end note
-
-    note right of CONFIRMED
-      Inventory remains consumed.
-      No transition back to RESERVED.
-    end note

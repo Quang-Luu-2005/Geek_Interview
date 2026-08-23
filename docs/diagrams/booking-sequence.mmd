@@ -2,56 +2,47 @@ sequenceDiagram
     autonumber
     actor Customer
     participant API as REST API
-    participant Idem as Idempotency Module
-    participant Booking as Booking Use Case
+    participant Booking as Booking Service
     participant DB as PostgreSQL
-    participant Inventory as Inventory Repository
-    participant Voucher as Voucher Repository
 
     Customer->>API: POST /bookings + Idempotency-Key
-    API->>API: Parse, authenticate, validate DTO
-    API->>Idem: Compute request fingerprint
-    Idem->>DB: Lookup (user_id, key)
+    API->>API: Authenticate, validate, normalize, fingerprint
+    API->>DB: Lookup (user_id, key)
 
-    alt Existing key, same fingerprint and completed
-        DB-->>Idem: Stored response
-        Idem-->>API: Replay original status/body
-        API-->>Customer: Original response
-    else Existing key with different fingerprint
-        DB-->>Idem: Conflicting fingerprint
-        Idem-->>API: IDEMPOTENCY_KEY_REUSED
-        API-->>Customer: 409 Conflict
+    alt Existing key, same fingerprint, completed
+        DB-->>API: Stored status and response
+        API-->>Customer: Replay original result
+    else Existing key, different fingerprint
+        DB-->>API: Conflicting fingerprint
+        API-->>Customer: 409 IDEMPOTENCY_KEY_REUSED
     else New logical request
-        Booking->>DB: BEGIN
-        Booking->>Idem: Insert idempotency record (unique scope/key)
-        Idem-->>Booking: Claim succeeds
-        Booking->>DB: Validate published/bookable concert
-        Booking->>Inventory: Reserve categories in sorted order
-        Inventory->>DB: Conditional UPDATE ... WHERE available >= qty
+        API->>Booking: Execute create booking
+        Booking->>DB: BEGIN + claim idempotency key
+        Booking->>DB: Validate concert and categories
+        Booking->>DB: Reserve inventory in sorted order (conditional UPDATE)
 
         alt Sold out
-            DB-->>Inventory: 0 rows
+            DB-->>Booking: 0 rows updated
             Booking->>DB: ROLLBACK
             Booking-->>API: INSUFFICIENT_TICKET_INVENTORY
             API-->>Customer: 409 Conflict
-        else Voucher supplied
-            Booking->>Voucher: Reserve eligibility and quota
-            Voucher->>DB: Conditional quota update + redemption insert
-            alt Voucher rejected
-                DB-->>Voucher: Ineligible/exhausted
-                Booking->>DB: ROLLBACK inventory and idempotency claim
-                Booking-->>API: VOUCHER_INVALID
-                API-->>Customer: 422 Unprocessable Entity
-            else Voucher accepted
-                Voucher-->>Booking: Discount snapshot
+        else Inventory reserved
+            opt Voucher supplied
+                Booking->>DB: Validate scope and reserve quota/redemption
+                alt Voucher rejected
+                    DB-->>Booking: Ineligible or exhausted
+                    Booking->>DB: ROLLBACK inventory and idempotency claim
+                    Booking-->>API: VOUCHER_INVALID
+                    API-->>Customer: 422 Unprocessable Entity
+                else Voucher accepted
+                    DB-->>Booking: Discount snapshot
+                end
             end
+            Booking->>DB: Insert booking, items, prices, history, replay result
+            Booking->>DB: COMMIT
+            Booking-->>API: Booking response
+            API-->>Customer: 201 Created
         end
-
-        Booking->>DB: Insert booking/items and price snapshots
-        Booking->>Idem: Store response payload
-        Booking->>DB: COMMIT
-        Booking-->>API: Booking response
-        API-->>Customer: 201 Created
     end
 
-    Note over API,DB: No external network call is made inside the critical transaction.
+    Note over Booking,DB: No external network call occurs inside the transaction.

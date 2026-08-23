@@ -1,73 +1,61 @@
-\section{Customer-Facing API Scope}
+OpenAPI is the complete machine-readable contract and Postman contains the
+executable workflows. This chapter highlights only the endpoints that expose
+the design's important boundaries.
+
+\section{Representative Customer APIs}
 \begin{table}[H]
 \centering
+\small
 \caption{Representative customer endpoints}
-\begin{tabularx}{\textwidth}{p{0.16\textwidth}p{0.35\textwidth}Y}
+\begin{tabularx}{\textwidth}{p{0.14\textwidth}p{0.38\textwidth}Y}
 \toprule
 \textbf{Method} & \textbf{Endpoint} & \textbf{Purpose} \\
 \midrule
-GET & \apiendpoint{/api/concerts} & Browse published concerts \\
-GET & \apiendpoint{/api/concerts/\{id\}} & Concert details \\
-GET & \apiendpoint{/api/concerts/\{id\}/ticket-categories} & Categories, price, informational availability \\
-POST & \apiendpoint{/api/bookings} & Atomic reservation with optional voucher and idempotency key \\
-GET & \apiendpoint{/api/bookings/\{id\}} & Ownership-scoped booking detail/status \\
-GET & \apiendpoint{/api/me/bookings} & Paginated customer booking history \\
-POST & \apiendpoint{/api/bookings/\{id\}/confirm} & Confirm a live owned reservation \\
-POST & \apiendpoint{/api/bookings/\{id\}/cancel} & Cancel and release a live owned reservation \\
+GET & \apiendpoint{/api/concerts} & Published catalog; detail/category routes extend this read model \\
+POST & \apiendpoint{/api/bookings} & Idempotent atomic reservation with optional voucher \\
+GET & \apiendpoint{/api/me/bookings} & Ownership-scoped booking history and detail \\
+POST & \apiendpoint{/api/bookings/\{id\}/confirm} & Guarded lifecycle command; cancel is the symmetric release command \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\section{Operation API Scope}
+\section{Representative Operation APIs}
 \begin{table}[H]
 \centering
+\small
 \caption{Representative operation endpoints}
-\begin{tabularx}{\textwidth}{p{0.16\textwidth}p{0.38\textwidth}Y}
+\begin{tabularx}{\textwidth}{p{0.14\textwidth}p{0.42\textwidth}Y}
 \toprule
 \textbf{Method} & \textbf{Endpoint} & \textbf{Purpose} \\
 \midrule
-GET & \apiendpoint{/api/admin/bookings} & Monitor/filter bookings \\
-GET & \apiendpoint{/api/admin/bookings/\{id\}} & Investigate booking and audit detail \\
-PATCH & \apiendpoint{/api/admin/bookings/\{id\}/status} & Guarded, reasoned manual transition \\
-POST & \apiendpoint{/api/admin/concerts} & Create draft concert \\
-POST & \apiendpoint{/api/admin/concerts/\{id\}/ticket-categories} & Create category and initial inventory \\
-POST & \apiendpoint{/api/admin/concerts/\{id\}/publish} & Publish a valid future concert \\
-POST & \apiendpoint{/api/admin/vouchers} & Create a validated scoped/global voucher \\
+GET & \apiendpoint{/api/admin/bookings} & Monitor/filter; detail includes audit and voucher state \\
+PATCH & \apiendpoint{/api/admin/bookings/\{id\}/status} & Guarded, reasoned, audited transition \\
+POST & \apiendpoint{/api/admin/concerts} & Draft creation; category and publish commands complete the minimal setup \\
+POST & \apiendpoint{/api/admin/vouchers} & Create validated global or scoped promotion \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Operation routes require an elevated operator/admin identity. Booking list
-filters are status, concert, user, and creation-time ranges with stable
-pagination. Booking detail exposes status history, voucher redemption state,
-and idempotency outcome timestamps without request hashes or stored response
-bodies.
-
-Manual status commands accept only \code{CONFIRMED}, \code{EXPIRED}, or
-\code{CANCELLED} as targets from \code{RESERVED}. The command-specific expiry
-guard is evaluated in PostgreSQL; cancellation/expiry release inventory and
-voucher quota in the same transaction, and every successful command appends an
-\code{OPERATION\_API} audit row with the required reason.
-
-The intentionally minimal catalog scope creates draft concerts, creates ticket
-categories with initial inventory, publishes only future concerts with
-inventory, and creates validated vouchers. Update/delete APIs are omitted so
-published prices, inventory history, and already-redeemed voucher policy cannot
-be changed without a separately specified business rule.
+Operation routes require \code{OPERATOR} or \code{ADMIN}. Manual terminal
+commands start from \code{RESERVED}; cancellation/expiry release resources in
+the same transaction and every successful command appends status history.
+Update/delete administration is intentionally omitted because historical
+pricing and voucher-version rules are unspecified.
 
 \section{Availability Semantics}
-Availability returned by read APIs is informational and may become stale immediately under concurrent demand. The authoritative inventory decision always occurs inside \apiendpoint{POST /api/bookings}.
+Read availability is an informational snapshot and can become stale
+immediately. The authoritative decision is the conditional inventory update
+inside \apiendpoint{POST /api/bookings}.
 
 \section{Error Contract}
-\begin{lstlisting}[caption={Example business error response}]
+\begin{lstlisting}[caption={Representative business error}]
 {
   "code": "INSUFFICIENT_TICKET_INVENTORY",
   "message": "Requested ticket quantity is no longer available",
-  "details": {
-    "ticketCategoryId": 10
-  },
+  "details": { "ticketCategoryId": 10 },
   "traceId": "..."
 }
 \end{lstlisting}
 
-Business conflicts should produce stable, documented errors rather than generic HTTP 500 responses.
+Expected sold-out, voucher, idempotency, ownership, and rate-limit conflicts
+produce stable documented 4xx responses rather than generic 500 errors.

@@ -5,38 +5,26 @@ auditable booking lifecycle, and serve ownership/operation/expiry queries with
 purpose-built indexes.
 
 \section{Core Entities}
-\begin{table}[H]
-\centering
-\caption{Core persistence model}
-\begin{tabularx}{\textwidth}{p{0.25\textwidth}Y}
-\toprule
-\textbf{Table} & \textbf{Purpose} \\
-\midrule
-\code{users} & Customer/operator identity used by the assessment implementation \\
-\code{concerts} & Concert metadata and publication lifecycle \\
-\code{ticket\_categories} & VIP/Standard/etc. category and current sale price \\
-\code{ticket\_inventories} & Total and available capacity per ticket category \\
-\code{bookings} & Booking aggregate, status, total amounts, expiry timestamp \\
-\code{booking\_items} & Quantity and immutable unit-price snapshots \\
-\code{vouchers} & Promotion policy, validity period, global quota \\
-\nolinkurl{voucher_redemptions} & Per-user voucher usage and booking linkage \\
-\nolinkurl{idempotency_records} & Logical request deduplication and response replay state \\
-\nolinkurl{booking_status_history} & Operational audit trail for transitions \\
-\bottomrule
-\end{tabularx}
-\end{table}
+Concert/category/inventory tables own the sellable catalog; booking/items own
+the reservation and price snapshot. Voucher redemptions, idempotency records,
+and status history preserve promotion, retry, and lifecycle evidence. The ERD
+is the compact source for table relationships and critical fields.
 
 \section{Entity Relationship Diagram}
 Figure~\ref{fig:erd} shows the implemented schema. A transactional
 \code{outbox\_events} table is intentionally absent because the outbox remains
 an ADR-backed future option rather than submitted runtime behavior.
 
+\clearpage
+\begin{landscape}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.86\textheight,keepaspectratio]{figures/erd.pdf}
+\includegraphics[width=0.98\linewidth,height=0.90\textheight,keepaspectratio]{figures/erd.pdf}
 \caption{Implemented PostgreSQL entity relationship model}
 \label{fig:erd}
 \end{figure}
+\end{landscape}
+\clearpage
 
 \section{Critical Constraints}
 \begin{lstlisting}[language=SQL,caption={Representative database constraints}]

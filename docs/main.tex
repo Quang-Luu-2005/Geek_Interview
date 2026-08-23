@@ -8,21 +8,8 @@
 \pagenumbering{roman}
 \input{config/titlepage}
 
-\chapter*{Document Control}
-\addcontentsline{toc}{chapter}{Document Control}
-\begin{tabularx}{\textwidth}{>{\bfseries}p{0.27\textwidth}X}
-Document & Backend System Design \& Implementation Report \\
-Assessment & Product Backend Engineer Test --- Concert Ticket Booking Platform \\
-Candidate & \CandidateName \\
-Repository & \RepoURL \\
-Version & \ReportVersion \\
-Date & \ReportDate \\
-\end{tabularx}
-
+\setcounter{tocdepth}{1}
 \tableofcontents
-\listoffigures
-\listoftables
-\lstlistoflistings
 \clearpage
 
 \pagenumbering{arabic}
@@ -30,7 +17,7 @@ Date & \ReportDate \\
 \chapter{Executive Summary}
 \input{chapters/00-executive-summary}
 
-\chapter{Requirements Analysis}
+\chapter{Requirements and Engineering Risks}
 \input{chapters/01-problem-analysis}
 
 \chapter{Scope, Assumptions, Business Rules, and Invariants}
@@ -69,30 +56,10 @@ Date & \ReportDate \\
 \chapter{Performance and Flash-Sale Analysis}
 \input{chapters/13-performance}
 
-\chapter{Architecture Decisions and Trade-offs}
-\input{chapters/14-tradeoffs}
-
-\chapter{Implemented Features, Omitted Features, and Limitations}
+\chapter{Scope, Limitations, and Future Evolution}
 \input{chapters/15-limitations}
-
-\chapter{Payment Gateway Scope Decision}
-\input{chapters/17-payment-scope}
 
 \chapter{Conclusion}
 \input{chapters/16-conclusion}
-
-\appendix
-
-\chapter{Local Setup and Runbook}
-\input{appendices/A-local-setup}
-
-\chapter{API Endpoint Matrix}
-\input{appendices/B-api-matrix}
-
-\chapter{Test Evidence Summary}
-\input{appendices/C-test-evidence}
-
-\chapter{Architecture Decision Records}
-\input{appendices/D-adrs}
 
 \end{document}

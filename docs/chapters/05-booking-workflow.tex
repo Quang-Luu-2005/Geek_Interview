@@ -1,17 +1,12 @@
 \section{Create Booking Sequence}
 The create-booking use case converts one authenticated customer intent into one
-replayable result. Figure~\ref{fig:booking-sequence} shows the new-key,
-same-payload replay, changed-payload conflict, sold-out, and voucher-failure
-branches.
+replayable result. The full vector sequence diagram is supplied separately at
+\nolinkurl{docs/figures/booking-sequence.pdf}, with editable source at
+\nolinkurl{docs/diagrams/booking-sequence.mmd}. It is not embedded here because
+its replay, conflict, sold-out, voucher, and rollback branches become too small
+at normal report zoom. The same flow is captured compactly below.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth,height=0.88\textheight,keepaspectratio]{figures/booking-sequence.pdf}
-\caption{Canonical idempotent create-booking sequence}
-\label{fig:booking-sequence}
-\end{figure}
-
-The implemented reasoning sequence is:
+The implemented sequence is:
 \begin{enumerate}
   \item authenticate the assessment identity, validate the DTO, normalize items, and calculate a canonical request fingerprint;
   \item inspect an already-completed idempotency record for an immediate replay/conflict path;

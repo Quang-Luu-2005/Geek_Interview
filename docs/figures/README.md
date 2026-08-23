@@ -14,6 +14,7 @@ Current exports:
 - `booking-state.pdf`
 - `expiry-worker-sequence.pdf`
 
-They were rendered with `@mermaid-js/mermaid-cli@11.12.0`. Update the matching
-`.mmd` source first, regenerate its PDF, then build `main.tex` to verify page
-layout.
+They were rendered with `@mermaid-js/mermaid-cli@11.12.0` using `--pdfFit` so
+the PDF bounding box follows the diagram instead of adding a Letter-sized page
+with unreadable whitespace. Update the matching `.mmd` source first, regenerate
+its PDF, then build `main.tex` to verify page layout.

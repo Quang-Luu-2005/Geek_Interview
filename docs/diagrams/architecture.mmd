@@ -1,26 +1,21 @@
-flowchart LR
+flowchart TB
     customer[Customer]
-    operator[Operator]
+    operator[Operator / Administrator]
+    api[REST API<br/>Stateless Controllers]
+    worker[Reservation Expiry Worker]
 
-    subgraph app[Concert Ticket Booking Backend - Modular Monolith]
-        api[REST API\nstateless controllers]
-        worker[Reservation Expiry Worker]
-
-        subgraph modules[Application Modules]
-            concert[Concert Module]
-            booking[Booking Module]
-            inventory[Inventory Module]
-            voucher[Voucher Module]
-            idem[Idempotency Module]
-            operation[Operation Module]
-        end
-
-        shared[Shared infrastructure\nconfig / errors / observability]
+    subgraph modules[Application Modules]
+        direction LR
+        concert[Concert]
+        booking[Booking]
+        inventory[Inventory]
+        voucher[Voucher]
+        idem[Idempotency]
+        operation[Operation]
     end
 
-    db[(PostgreSQL\nsource of truth)]
-    redis[(Redis\noptional future cache/rate limit)]
-    future[Future integrations\nemail / analytics / broker]
+    shared[Shared Infrastructure<br/>Config, Errors, Observability]
+    db[(PostgreSQL<br/>Source of Truth)]
 
     customer --> api
     operator --> api
@@ -30,22 +25,19 @@ flowchart LR
     booking --> inventory
     booking --> voucher
     booking --> idem
+    worker --> booking
+    api --> shared
+    worker --> shared
     concert --> db
     booking --> db
     inventory --> db
     voucher --> db
     idem --> db
     operation --> db
-    worker --> booking
-    worker --> db
-    api --> shared
-    worker --> shared
-    api -. optional .-> redis
-    booking -. future outbox .-> future
 
-    classDef current fill:#e8f3ff,stroke:#2563eb,stroke-width:1px;
-    classDef data fill:#fff7ed,stroke:#c2410c,stroke-width:1px;
-    classDef future fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5;
+    classDef actor fill:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef current fill:#e8f3ff,stroke:#2563eb,stroke-width:1.5px;
+    classDef data fill:#fff7ed,stroke:#c2410c,stroke-width:2px;
+    class customer,operator actor;
     class api,worker,concert,booking,inventory,voucher,idem,operation,shared current;
     class db data;
-    class redis,future future;

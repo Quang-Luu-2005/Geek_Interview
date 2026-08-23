@@ -1,13 +1,19 @@
 \section{State Model}
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.88\textwidth,height=0.48\textheight,keepaspectratio]{figures/booking-state.pdf}
+\includegraphics[width=\textwidth,height=0.36\textheight,keepaspectratio]{figures/booking-state.pdf}
 \caption{Implemented booking lifecycle}
 \label{fig:booking-state}
 \end{figure}
 
+Every terminal update requires the current state \code{RESERVED}; exactly one
+competing confirm, cancel, or expiry transition can change the row.
+
+\begingroup
+\renewcommand{\arraystretch}{1.28}
 \begin{table}[H]
 \centering
+\small
 \caption{Allowed lifecycle transitions}
 \begin{tabularx}{\textwidth}{p{0.18\textwidth}p{0.18\textwidth}p{0.16\textwidth}Y}
 \toprule
@@ -22,6 +28,7 @@ CANCELLED & Any state & No & Terminal in current scope \\
 \bottomrule
 \end{tabularx}
 \end{table}
+\endgroup
 
 \section{Why Reservation TTL Exists}
 Atomic creation prevents immediate overselling, but a reservation that never
@@ -38,7 +45,7 @@ to the lifecycle service. The service clamps externally supplied batch sizes to
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.86\textheight,keepaspectratio]{figures/expiry-worker-sequence.pdf}
+\includegraphics[width=0.93\textwidth,height=0.76\textheight,keepaspectratio]{figures/expiry-worker-sequence.pdf}
 \caption{Reservation expiry worker sequence and transaction boundary}
 \label{fig:expiry-worker-sequence}
 \end{figure}

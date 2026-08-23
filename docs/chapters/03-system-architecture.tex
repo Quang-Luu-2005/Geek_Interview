@@ -5,15 +5,14 @@ stated workload without speculative infrastructure, remain maintainable and
 testable, reproduce locally, and expose explicit evolution seams.
 
 \section{System Context}
-Figure~\ref{fig:system-context} distinguishes current dependencies from future
-external systems. PostgreSQL is the only current external consistency service.
-Payment and notification providers are deliberately dashed and labelled as
-future/out of scope.
+Figure~\ref{fig:system-context} shows only the submitted system. PostgreSQL is
+the sole external consistency service; payment and notification providers are
+kept out of the current architecture.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{figures/system-context.pdf}
-\caption{Current system context with explicitly out-of-scope future actors}
+\includegraphics[width=0.52\textwidth,height=0.34\textheight,keepaspectratio]{figures/system-context.pdf}
+\caption{Current-scope system context}
 \label{fig:system-context}
 \end{figure}
 
@@ -34,7 +33,7 @@ the finite-resource guarantees demonstrated by this submission.
 \section{Component and Module Architecture}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/architecture.pdf}
+\includegraphics[width=\textwidth,height=0.66\textheight,keepaspectratio]{figures/architecture.pdf}
 \caption{Modular-monolith component view}
 \label{fig:architecture}
 \end{figure}
@@ -85,11 +84,9 @@ Expiry processing & Broker-delivered delayed messages & Reliable broker scheduli
 \end{tabularx}
 \end{table}
 
-\section{Scaling Direction}
-Scale stateless API replicas first only after measuring database contention.
-Multiple expiry workers already coordinate through \code{FOR UPDATE SKIP
-LOCKED}. If post-commit integrations grow, a transactional outbox can bridge
-database state to a broker without dual writes. Hot categories may ultimately
-need admission control, queueing, or inventory partitioning, but those are
-revisit decisions based on observed lock waits rather than baseline
-requirements.
+\section{Evolution Triggers}
+Scale stateless API replicas after measuring database contention. Multiple
+expiry workers already coordinate through \code{FOR UPDATE SKIP LOCKED}. A
+transactional outbox becomes relevant only when a real post-commit consumer
+exists; hot-row admission control or partitioning requires measured lock-wait
+evidence. Chapter~\ref{ch:payment-scope} summarizes revisit triggers.

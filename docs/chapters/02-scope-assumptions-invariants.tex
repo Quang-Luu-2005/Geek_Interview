@@ -1,122 +1,66 @@
-\section{Scope Strategy}
-The assessment explicitly permits a reasonable, documented feature boundary.
-The implementation therefore prioritizes customer
-booking correctness, a defensible minimal operation workflow, deterministic
-local delivery, and evidence under races. Production breadth is not claimed
-where the code does not provide it.
-
 \section{Implemented Scope}
-The submitted backend implements published-concert browse/detail/category
-reads; informational availability; transactional booking creation; optional
-voucher application; idempotent replay; owned booking history/detail;
-confirm/cancel commands; automatic expiry; operator booking list/detail/manual
-transition; draft concert/category creation and publication; scoped voucher
-creation; stable errors; health/metrics/OpenAPI endpoints; and audit history.
-
-Full update/delete administration, real payment, notification delivery,
-seat-level selection, refunds, and distributed deployment are deliberately
-excluded. Chapter~\ref{ch:payment-scope} records the payment boundary in detail.
+The submission covers concert browse/detail, category inventory, transactional
+booking creation, voucher application, customer booking lookup, confirm/cancel,
+operator monitoring and guarded changes, minimal concert/category/voucher
+creation, and automated expiry. Real authentication, payment, seat maps,
+notifications, and multi-region operation are excluded.
 
 \section{Assumptions}
-\begingroup
-\setlength{\tabcolsep}{4pt}
+\begin{table}[H]
+\centering
 \small
-\begin{longtable}{p{0.11\textwidth}p{0.38\textwidth}p{0.39\textwidth}}
-\caption{Key assessment assumptions}\label{tab:assumptions}\\
+\caption{Assumptions that shape the design}
+\begin{tabularx}{\textwidth}{p{0.10\textwidth}Y}
 \toprule
-\textbf{ID} & \textbf{Assumption} & \textbf{Reason / consequence} \\
+\textbf{ID} & \textbf{Assumption} \\
 \midrule
-\endfirsthead
-\toprule
-\textbf{ID} & \textbf{Assumption} & \textbf{Reason / consequence} \\
-\midrule
-\endhead
-A-01 & Inventory is capacity-based by ticket category & Seat maps and exact-seat holds are outside the model \\
-A-02 & A new booking enters \code{RESERVED} & Resources are held before confirmation \\
-A-03 & Reservation TTL defaults to ten minutes and is configurable & Abandoned reservations cannot hold finite resources forever \\
-A-04 & Only published, future/bookable concerts accept bookings & Draft or invalid catalog data cannot consume stock \\
-A-05 & Prices and discounts are calculated only by the backend & Client totals are never authoritative \\
-A-06 & Booking items and totals are immutable historical snapshots & Later catalog/promotion changes do not rewrite history \\
-A-07 & Voucher status, window, scope, quota, and per-user rules are backend policies & The booking request supplies only an optional code \\
-A-08 & Authentication is simplified to a seeded \code{x-user-id} & Ownership and RBAC are enforced, but JWT/OIDC/token verification is not claimed \\
-A-09 & Real payment processing is outside assessment scope & No card, wallet, provider, settlement, refund, or webhook flow exists \\
-A-10 & Confirmation is simulated through an owned customer command or authorized operation transition & \code{CONFIRMED} means accepted by the assessment workflow, not proven settlement \\
+A-01 & PostgreSQL 16 is the authoritative store and consistency boundary. \\
+A-02 & The submitted \code{x-user-id} identifies seeded users; it is not production authentication. \\
+A-03 & Inventory is category-level capacity, not assigned seating. \\
+A-04 & Prices and discounts are calculated from persisted server data; money uses fixed precision. \\
+A-05 & A new booking is \code{RESERVED} for ten minutes unless confirmed, cancelled, or expired. \\
+A-06 & One idempotency key represents one normalized request for one customer. \\
+A-07 & Voucher reservation consumes quota while the booking is active and can be released once. \\
+A-08 & API instances are stateless; correctness must survive restarts and multiple instances. \\
 \bottomrule
-\end{longtable}
-\endgroup
+\end{tabularx}
+\end{table}
 
 \section{Business Rules}
-\begin{longtable}{p{0.12\textwidth}p{0.78\textwidth}}
-\caption{Enforced business rules}\label{tab:business-rules}\\
-\toprule
-\textbf{ID} & \textbf{Rule} \\
-\midrule
-\endfirsthead
-\toprule
-\textbf{ID} & \textbf{Rule} \\
-\midrule
-\endhead
-BR-01 & Every requested ticket quantity is a positive integer. \\
-BR-02 & Every ticket category belongs to the selected concert. \\
-BR-03 & A reservation succeeds only when sufficient inventory exists at the atomic write boundary. \\
-BR-04 & A voucher is usable only while active and inside its validity window. \\
-BR-05 & Voucher usage cannot exceed its global \code{usage\_limit}. \\
-BR-06 & A user cannot hold more than one non-released redemption for the same voucher. \\
-BR-07 & Subtotal, discount, and final amount are calculated by the server from persisted policies. \\
-BR-08 & Persisted booking price snapshots do not change when current prices or voucher definitions change. \\
-BR-09 & \code{RESERVED} is the only mutable booking state; terminal transitions must pass their command-specific time guard. \\
-BR-10 & Eligible cancellation/expiry releases inventory and reserved voucher quota exactly once in the winning transition transaction. \\
-\bottomrule
-\end{longtable}
+These rules express user/product policy rather than concurrency guarantees:
 
-\section{Critical Business Invariants}
-\begin{invariantbox}[INV-01 --- Inventory safety]
-For every category, \code{0 <= available\_quantity <= total\_quantity} always
-holds, including under concurrent booking attempts.
-\end{invariantbox}
-
-\begin{invariantbox}[INV-02 --- Exactly-once logical reservation]
-One user-scoped logical booking intent consumes inventory at most once, even if
-the client retries concurrently or after losing a response.
-\end{invariantbox}
-
-\begin{invariantbox}[INV-03 --- Voucher quota safety]
-Global voucher usage never exceeds its configured quota and the active
-per-user redemption constraint is never violated.
-\end{invariantbox}
-
-\begin{invariantbox}[INV-04 --- Atomic booking creation]
-Idempotency claim, inventory reservation, voucher reservation, server pricing,
-booking/items, audit history, and replayable result either all commit or all
-roll back as implemented by the critical transaction.
-\end{invariantbox}
-
-\begin{invariantbox}[INV-05 --- Exactly-once resource release]
-Expired or cancelled reservations restore ticket and eligible voucher capacity
-exactly once; repeat worker/customer/operator commands cannot double-release.
-\end{invariantbox}
-
-\begin{invariantbox}[INV-06 --- Historical price integrity]
-Changing current ticket or promotion data cannot alter an existing booking's
-persisted unit prices or monetary totals.
-\end{invariantbox}
-
-\begin{invariantbox}[INV-07 --- Lifecycle validity]
-Every status change follows \code{RESERVED -> CONFIRMED | EXPIRED | CANCELLED};
-terminal states cannot be overwritten by a racing command.
-\end{invariantbox}
-
-\begin{invariantbox}[INV-08 --- Operation auditability]
-Every successful creation or manual/worker lifecycle transition appends status
-history with source, reason where applicable, actor when available, and time.
-\end{invariantbox}
-
-\section{Non-Goals for the Assessment}
-\begin{itemize}[nosep,leftmargin=*]
-  \item real payment authorization, capture, settlement, reconciliation, refunds, or chargebacks;
-  \item seat-map / exact-seat selection;
-  \item voucher or concert update/delete workflows beyond implemented creation/publication;
-  \item email/SMS delivery and real-time WebSocket availability;
-  \item multi-region active-active deployment or full microservice decomposition;
-  \item mandatory Redis, Kafka, or Kubernetes as correctness prerequisites.
+\begin{itemize}[leftmargin=*]
+  \item requested quantity is positive and each category belongs to the concert;
+  \item only a published, future concert can be booked;
+  \item voucher status, time window, scope, and per-user policy must match;
+  \item the server owns price, discount, and total calculations;
+  \item a live reservation may be confirmed or cancelled only before expiry;
+  \item operation changes require an elevated role, a valid transition, and an audit reason.
 \end{itemize}
+
+\section{Critical Invariants}
+\begin{table}[H]
+\centering
+\small
+\caption{Invariant, enforcement, and evidence}
+\begin{tabularx}{\textwidth}{p{0.10\textwidth}p{0.34\textwidth}p{0.31\textwidth}Y}
+\toprule
+\textbf{ID} & \textbf{Invariant} & \textbf{Main enforcement} & \textbf{Evidence} \\
+\midrule
+INV-01 & Inventory never becomes negative & Conditional update + DB checks & CONC-001 \\
+INV-02 & One logical request consumes stock once & Idempotency constraint/fingerprint & CONC-002 \\
+INV-03 & Voucher quota never exceeds its limit & Conditional quota + unique redemption & CONC-003 \\
+INV-04 & Booking creation is all-or-nothing & One PostgreSQL transaction & INT-001 \\
+INV-05 & Cancellation/expiry releases once & Conditional lifecycle transition & CONC-004 \\
+INV-06 & Historical booking prices do not change & Item and discount snapshots & INT-002 \\
+INV-07 & Only one valid terminal transition wins & Update requires \code{RESERVED} & CONC-004 \\
+INV-08 & Manual/worker changes are traceable & Status history in same transaction & Operation tests \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Non-Goals}
+The assessment does not implement production identity, real payments/refunds,
+seat selection, notification delivery, full administration CRUD, analytics,
+multi-region active-active data, or event-broker infrastructure. These
+boundaries keep the evidence focused on finite-resource correctness.
