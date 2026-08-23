@@ -29,8 +29,9 @@ test-results/               # committed evidence indexes
    — implemented, partial and explicitly out-of-scope behavior.
 5. [Test strategy](../docs/TEST_STRATEGY.md) and
    [performance report](../docs/PERFORMANCE_REPORT.md) — reproducible evidence.
-6. [WOW / plus points](../docs/WOW_PLUS_POINTS.md) — read-only submission
-   verification, live smoke journey and liveness/readiness probes.
+6. [WOW / plus points](../docs/WOW_PLUS_POINTS.md) — submission verification,
+   four-scenario correctness showcase, live smoke journey and
+   liveness/readiness probes.
 
 ## 2. Submission manifest
 
@@ -52,6 +53,7 @@ test-results/               # committed evidence indexes
 | Security assumptions | [`docs/SECURITY_ASSUMPTIONS.md`](../docs/SECURITY_ASSUMPTIONS.md) |
 | Observability | [`docs/OBSERVABILITY.md`](../docs/OBSERVABILITY.md) |
 | WOW / plus points | [`docs/WOW_PLUS_POINTS.md`](../docs/WOW_PLUS_POINTS.md) |
+| ADR pack | [`docs/adr/`](../docs/adr/) |
 | Test evidence index | [`test-results/README.md`](../test-results/README.md) |
 | Concurrency evidence | [`test-results/concurrency/`](../test-results/concurrency/) |
 | Load-test evidence | [`test-results/load/`](../test-results/load/) |
@@ -73,13 +75,15 @@ npm run test:integration
 npm run test:concurrency
 npm run build
 npm run verify:submission
+npm run demo:wow
 ```
 
 Then verify `GET /health/ready`, import the Postman environment and collections,
 and run the customer flow followed by the operation flow. `npm run test:load` is
 an optional k6 benchmark and is documented separately because it needs k6 or
-the Docker k6 image. `npm run demo:smoke` is the non-destructive API smoke
-journey; it requires a running API and seeded database.
+the Docker k6 image. `npm run demo:wow` is the deterministic four-scenario
+correctness showcase; `npm run demo:smoke` is the non-destructive API smoke
+journey and requires a running API and seeded database.
 
 ## 4. Deliberate exclusions
 

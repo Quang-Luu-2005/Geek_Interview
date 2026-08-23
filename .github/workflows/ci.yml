@@ -65,3 +65,28 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Submission verifier
+        run: npm run verify:submission
+
+      - name: Write CI evidence manifest
+        if: always()
+        run: |
+          mkdir -p test-results
+          {
+            echo "commit: ${GITHUB_SHA}"
+            echo "workflow: ${GITHUB_WORKFLOW}"
+            echo "run: ${GITHUB_RUN_ID}"
+            echo "checks: format lint typecheck unit integration concurrency build submission-verifier"
+          } > test-results/ci-summary.txt
+
+      - name: Upload reviewer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reviewer-evidence
+          path: |
+            test-results/**
+            docs/PERFORMANCE_REPORT.md
+            docs/WOW_PLUS_POINTS.md
+          if-no-files-found: ignore

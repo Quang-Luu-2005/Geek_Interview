@@ -130,6 +130,7 @@ npm run db:migrate
 npm run db:seed
 npm run test:integration
 npm run test:concurrency
+npm run demo:wow
 ```
 
 `npm run test:load` runs the Task 11 k6 steady/burst scenario. It uses a local
@@ -158,10 +159,12 @@ curl -X POST http://localhost:3000/api/bookings \
 # decrementing inventory a second time.
 ```
 
-For concurrency and expiry behavior, run `npm run test:concurrency`; for the
-full request-by-request flow, use the [Postman runbook](postman/README.md). The
-reviewer-facing end-to-end smoke journey is `npm run demo:smoke`; it creates and
-cancels one booking without resetting the database. See
+For concurrency and expiry behavior, run `npm run test:concurrency`; the
+four-scenario reviewer showcase is `npm run demo:wow` (it resets only the
+explicit `DATABASE_URL` database). For the full request-by-request flow, use
+the [Postman runbook](postman/README.md). The reviewer-facing end-to-end smoke
+journey is `npm run demo:smoke`; it creates and cancels one booking without
+resetting the database. See
 [docs/WOW_PLUS_POINTS.md](docs/WOW_PLUS_POINTS.md).
 
 ## Repository conventions

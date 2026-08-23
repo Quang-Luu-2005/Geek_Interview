@@ -29,7 +29,10 @@ async function request(path, options = {}) {
 }
 
 function expectStatus(result, expected, name) {
-  assert(expected.includes(result.response.status), `${name}: expected ${expected.join('/')} but got ${result.response.status}`);
+  assert(
+    expected.includes(result.response.status),
+    `${name}: expected ${expected.join('/')} but got ${result.response.status}`,
+  );
   pass(name, `HTTP ${result.response.status}`);
 }
 
@@ -44,7 +47,10 @@ try {
 
   const openapi = await request('/openapi.yaml');
   expectStatus(openapi, [200], 'OpenAPI contract');
-  assert(String(openapi.body).includes('openapi: 3.0.3'), 'OpenAPI contract: invalid version marker');
+  assert(
+    String(openapi.body).includes('openapi: 3.0.3'),
+    'OpenAPI contract: invalid version marker',
+  );
 
   const metrics = await request('/metrics');
   expectStatus(metrics, [200], 'metrics endpoint');
@@ -52,9 +58,14 @@ try {
 
   const browse = await request('/api/concerts?page=1&limit=20');
   expectStatus(browse, [200], 'published concert browse');
-  assert(browse.body?.data?.some((concert) => concert.slug === concertId), 'published concert browse: seeded concert missing');
+  assert(
+    browse.body?.data?.some((concert) => concert.slug === concertId),
+    'published concert browse: seeded concert missing',
+  );
 
-  const categories = await request(`/api/concerts/${encodeURIComponent(concertId)}/ticket-categories`);
+  const categories = await request(
+    `/api/concerts/${encodeURIComponent(concertId)}/ticket-categories`,
+  );
   expectStatus(categories, [200], 'ticket category lookup');
   const standard = categories.body?.categories?.find((category) => category.code === 'STANDARD');
   assert(standard?.id, 'ticket category lookup: STANDARD category missing');
@@ -76,7 +87,10 @@ try {
   expectStatus(first, [201], 'booking create');
   const bookingId = first.body?.data?.id;
   assert(bookingId, 'booking create: booking ID missing');
-  assert(first.response.headers.get('x-request-id') === requestId, 'booking create: X-Request-ID was not propagated');
+  assert(
+    first.response.headers.get('x-request-id') === requestId,
+    'booking create: X-Request-ID was not propagated',
+  );
 
   const replay = await request('/api/bookings', { method: 'POST', headers, body: payload });
   expectStatus(replay, [200, 201], 'idempotent replay');
@@ -87,7 +101,10 @@ try {
     headers: { 'x-user-id': userId },
   });
   expectStatus(cancelled, [200, 201], 'booking cancellation cleanup');
-  assert(cancelled.body?.data?.status === 'CANCELLED', 'booking cancellation cleanup: status mismatch');
+  assert(
+    cancelled.body?.data?.status === 'CANCELLED',
+    'booking cancellation cleanup: status mismatch',
+  );
 
   const history = await request('/api/me/bookings?page=1&limit=20', {
     headers: { 'x-user-id': userId },

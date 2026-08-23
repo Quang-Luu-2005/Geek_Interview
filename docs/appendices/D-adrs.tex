@@ -15,12 +15,17 @@
 \textbf{Decision:} Scope idempotency key by user, store a request fingerprint, and replay the original logical result.\\
 \textbf{Consequence:} Requires lifecycle/retention policy for idempotency records.
 
-\section{ADR-004 --- Database-Polling Expiry Worker}
+\section{ADR-004 --- Idempotent Booking API}
 \textbf{Status:} Accepted\\
-\textbf{Decision:} Process expired reservations in batches; optionally use \code{FOR UPDATE SKIP LOCKED} for multiple workers.\\
+\textbf{Decision:} Scope the idempotency key by customer, persist the request fingerprint and original result, and replay the same logical booking.\\
+\textbf{Consequence:} Idempotency records need a retention policy.
+
+\section{ADR-005 --- Database-Polling Expiry Worker}
+\textbf{Status:} Accepted\\
+\textbf{Decision:} Process expired reservations in batches with \code{FOR UPDATE SKIP LOCKED}; release inventory and voucher quota in the same transaction.\\
 \textbf{Consequence:} Expiration timing is bounded by poll interval rather than instantaneous.
 
-\section{ADR-005 --- Transactional Outbox (Optional)}
+\section{ADR-006 --- Transactional Outbox (Optional)}
 \textbf{Status:} Proposed / Optional\\
 \textbf{Decision:} If asynchronous integrations are implemented, write domain events to an outbox in the same business transaction.\\
 \textbf{Consequence:} Adds outbox storage and a worker, but avoids DB+broker dual-write inconsistency.

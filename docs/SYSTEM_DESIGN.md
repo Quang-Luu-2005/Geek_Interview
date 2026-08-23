@@ -10,6 +10,8 @@ Related evidence: [ADR-001 modular monolith](adr/001-use-modular-monolith.md),
 [ADR-002 PostgreSQL](adr/002-use-postgresql.md),
 [ADR-003 atomic inventory](adr/003-atomic-inventory-update.md),
 [ADR-004 idempotent booking](adr/004-idempotent-booking-api.md),
+[ADR-005 expiry worker](adr/005-expiry-worker.md),
+[ADR-006 optional transactional outbox](adr/006-transactional-outbox.md),
 [database design](DATABASE_DESIGN.md), [API contracts](API_CUSTOMER.md), and
 [test/performance evidence](TEST_STRATEGY.md).
 

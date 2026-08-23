@@ -50,8 +50,11 @@ const requiredFiles = [
   'docs/TEST_STRATEGY.md',
   'docs/PERFORMANCE_REPORT.md',
   'docs/WOW_PLUS_POINTS.md',
+  'docs/adr/005-expiry-worker.md',
+  'docs/adr/006-transactional-outbox.md',
   'scripts/verify-submission.mjs',
   'scripts/reviewer-smoke.mjs',
+  'scripts/reviewer-wow.mjs',
   'postman/local.environment.json',
   'postman/customer-apis.collection.json',
   'postman/operation-apis.collection.json',
@@ -98,11 +101,7 @@ for (const id of [
 }
 
 const customerCollection = read('postman/customer-apis.collection.json');
-for (const example of [
-  'Retry same booking',
-  'Voucher booking example',
-  'Sold-out conflict',
-]) {
+for (const example of ['Retry same booking', 'Voucher booking example', 'Sold-out conflict']) {
   if (customerCollection.includes(example)) pass('Postman example', example);
   else fail('Postman example', `missing ${example}`);
 }
@@ -113,7 +112,8 @@ const documentationFiles = [
   ...walk('docs').filter((file) => file.endsWith('.md')),
   'postman/README.md',
 ];
-const placeholderPattern = /TODO|<install command>|<migrate command>|<seed command>|YOUR NAME|your-account\/your-repository/;
+const placeholderPattern =
+  /TODO|<install command>|<migrate command>|<seed command>|YOUR NAME|your-account\/your-repository/;
 for (const relativePath of documentationFiles) {
   const content = read(relativePath);
   const match = content.match(placeholderPattern);
@@ -127,7 +127,11 @@ for (const relativePath of documentationFiles) {
     let target = match[1].trim().split('#')[0].split('?')[0];
     if (!target || /^https?:\/\//i.test(target) || /^mailto:/i.test(target)) continue;
     target = target.replace(/^<|>$/g, '');
-    const resolvedTarget = resolve(repositoryRoot, dirname(relativePath), decodeURIComponent(target));
+    const resolvedTarget = resolve(
+      repositoryRoot,
+      dirname(relativePath),
+      decodeURIComponent(target),
+    );
     if (!existsSync(resolvedTarget)) fail('documentation link', `${relativePath} -> ${target}`);
   }
 }

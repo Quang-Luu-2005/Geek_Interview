@@ -36,7 +36,31 @@ does not drop or reset the database.
 
 Implementation: [`scripts/reviewer-smoke.mjs`](../scripts/reviewer-smoke.mjs).
 
-## 3. Production-minded runtime probes
+## 3. Four-scenario correctness showcase
+
+With PostgreSQL running and `DATABASE_URL` pointing at the intended local
+database:
+
+```bash
+npm run demo:wow
+```
+
+The command resets only that explicit database, reapplies migrations and the
+deterministic seed, then runs four real database-backed scenarios one by one:
+
+| Demo | Evidence |
+|---|---|
+| Oversell race | 100 concurrent requests, exactly 10 successes and final stock 0 |
+| Idempotent retry | Concurrent same-key requests produce one booking and one decrement |
+| Last-voucher race | 20 users compete for quota 1; exactly one redemption survives |
+| Expiry release | `SKIP LOCKED` claims, resource release, and confirm/expire terminal race |
+
+The script prints each Jest result and a final seeded-state summary queried from
+PostgreSQL. It is a correctness showcase, not a load-test substitute.
+
+Implementation: [`scripts/reviewer-wow.mjs`](../scripts/reviewer-wow.mjs).
+
+## 4. Production-minded runtime probes
 
 The API now separates orchestration concerns:
 
