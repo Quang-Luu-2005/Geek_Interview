@@ -34,7 +34,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ['sh', '-c', 'npm run db:migrate && npm run db:seed && npm run start:prod']
+    command:
+      ['sh', '-c', 'npm run db:migrate:prod && npm run db:seed:prod && npm run start:prod']
     ports:
       - '${API_HOST_PORT:-3000}:3000'
     healthcheck:

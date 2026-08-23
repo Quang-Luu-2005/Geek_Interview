@@ -20,6 +20,7 @@ the exact benchmark commit SHA separately.
 | Integration suites | PASS - 7 suites / 22 tests |
 | Concurrency suites | PASS - 4 suites / 7 tests |
 | Production build | PASS |
+| Newman customer API smoke | PASS - 5 requests / 7 assertions |
 | Submission verifier | PASS - 41 checks |
 | Delivery verifier | PASS - 49 checks |
 | Reviewer API smoke | PASS - 10 checks |
@@ -53,11 +54,12 @@ The performance numbers and environment are recorded in
 - The committed source contains no private key material or cloud/API tokens.
 - The delivery root is `README.md`; the canonical handoff map is
   [`submission/README.md`](../submission/README.md).
-- `npm audit` reports three high advisories in the Prisma 6.19 CLI's
-  dev/build-only `deepmerge-ts` chain. The automatic fix downgrades Prisma to
-  6.12 and breaks the current Prisma client/tooling alignment; this is a
-  documented production follow-up, not a runtime API dependency. Re-run the
-  audit before production deployment.
+- The production image installs with `--omit=dev --omit=optional`; Prisma CLI
+  and its `deepmerge-ts` advisory chain remain build-only. The generated Prisma
+  client is copied into the runtime image, which passes
+  `npm audit --omit=dev --omit=optional --audit-level=high` with zero findings.
+- CI boots the built API and runs a pinned Newman 6.2.2 customer smoke covering
+  browse, category discovery, booking creation, idempotent replay and cleanup.
 
 ## Clean-clone rehearsal
 

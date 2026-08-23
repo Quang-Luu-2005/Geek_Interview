@@ -66,6 +66,21 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Start API for contract smoke
+        run: |
+          RESERVATION_EXPIRY_WORKER_ENABLED=false LOG_LEVEL=error npm run start:prod > /tmp/ticket-api.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/health/ready > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/ticket-api.log
+          exit 1
+
+      - name: Newman customer API smoke
+        run: npm run test:postman
+
       - name: Submission verifier
         run: npm run verify:submission
 
@@ -80,7 +95,7 @@ jobs:
             echo "commit: ${GITHUB_SHA}"
             echo "workflow: ${GITHUB_WORKFLOW}"
             echo "run: ${GITHUB_RUN_ID}"
-            echo "checks: format lint typecheck unit integration concurrency build submission-verifier"
+            echo "checks: format lint typecheck unit integration concurrency build newman-smoke submission-verifier delivery-verifier"
           } > test-results/ci-summary.txt
 
       - name: Upload reviewer evidence

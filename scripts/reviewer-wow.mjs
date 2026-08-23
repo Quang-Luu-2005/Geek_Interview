@@ -21,9 +21,15 @@ if (!databaseUrl) {
   ];
 
   function run(commandArgs) {
-    const result = spawnSync(npmCommand, commandArgs, {
+    const result = spawnSync(npmCommand, ['--silent', ...commandArgs], {
       cwd: repositoryRoot,
-      env: { ...process.env, DATABASE_URL: databaseUrl },
+      env: {
+        ...process.env,
+        DATABASE_URL: databaseUrl,
+        NODE_ENV: 'test',
+        LOG_LEVEL: 'error',
+        RESERVATION_EXPIRY_WORKER_ENABLED: 'false',
+      },
       shell: process.platform === 'win32',
       stdio: 'inherit',
     });

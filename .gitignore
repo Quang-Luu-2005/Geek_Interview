@@ -63,6 +63,7 @@ __pycache__/
 # Build, generated output and caches
 # ============================================================
 dist/
+dist-tools/
 build/
 out/
 target/

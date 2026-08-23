@@ -141,7 +141,8 @@
         "method": "POST",
         "header": [{ "key": "x-user-id", "value": "{{customerUserId}}" }],
         "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel"
-      }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const body = pm.response.json();", "pm.test('booking cancellation succeeds', () => pm.expect([200, 201]).to.include(pm.response.code));", "pm.test('cancelled status is returned', () => pm.expect(body.data.status).to.eql('CANCELLED'));"] } }]
     }
   ]
 }

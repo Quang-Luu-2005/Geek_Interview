@@ -7,7 +7,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && npm run build:operations",
+    "build:operations": "tsc --module commonjs --target ES2022 --outDir dist-tools --esModuleInterop --skipLibCheck scripts/migrate.ts scripts/seed.ts",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
@@ -17,8 +18,9 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --config jest.config.ts --runInBand",
     "test:unit": "jest --config jest.config.ts --runInBand tests/unit",
-    "test:integration": "jest --config jest.config.integration.ts --runInBand",
-    "test:concurrency": "jest --config jest.config.concurrency.ts --runInBand --passWithNoTests",
+    "test:integration": "jest --config jest.config.integration.cjs --runInBand",
+    "test:concurrency": "jest --config jest.config.concurrency.cjs --runInBand --passWithNoTests",
+    "test:postman": "npx --yes newman@6.2.2 run postman/customer-apis.collection.json --environment postman/local.environment.json --folder \"Browse published concerts\" --folder \"Ticket categories and availability\" --folder \"Create booking\" --folder \"Retry same booking (idempotent replay)\" --folder \"Cancel booking\" --bail",
     "test:load": "node scripts/check-load-test.mjs",
     "verify:submission": "node scripts/verify-submission.mjs",
     "verify:delivery": "node scripts/verify-delivery.mjs",
@@ -27,6 +29,8 @@
     "prisma:generate": "prisma generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:migrate:prod": "node dist-tools/migrate.js",
+    "db:seed:prod": "node dist-tools/seed.js",
     "db:reset": "tsx scripts/reset-db.ts",
     "ci": "npm run format:check && npm run lint && npm run typecheck && npm run test:unit && npm run build && npm run verify:submission",
     "prepare": "prisma generate"

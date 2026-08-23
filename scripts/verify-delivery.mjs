@@ -112,7 +112,7 @@ if (forbiddenTracked.length > 0) fail('tracked hygiene', forbiddenTracked.join('
 else pass('tracked hygiene', 'no local env, dependency, build, database or key artifacts');
 
 const trackedContent = tracked
-  .filter((file) => /\.(md|mjs|ts|json|yaml|yml|sql|tex|example)$/.test(file))
+  .filter((file) => /\.(md|mjs|cjs|ts|json|yaml|yml|sql|tex|example)$/.test(file))
   .map((file) => read(file))
   .join('\n');
 const secretPattern =
