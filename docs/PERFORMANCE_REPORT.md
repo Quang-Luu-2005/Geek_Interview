@@ -1,6 +1,6 @@
 # Performance Report
 
-Generated at **2026-08-23T08:12:31.178Z** from commit **07c33e6dfd9e84024b237ebe412e819488fcd429**.
+Generated at **2026-08-23T08:25:45.795Z** from commit **f5f64caef9263eb60a6be40c626110f533b265e4**.
 
 ## Reproduction
 
@@ -26,19 +26,19 @@ The runner resolves the seeded customer and STANDARD category automatically. It 
 | Workload | steady 5 req/s, then burst 15 req/s |
 | Steady duration | `30s` |
 | Burst stages | 3 x `10s` |
-| Commit | `07c33e6dfd9e84024b237ebe412e819488fcd429` |
+| Commit | `f5f64caef9263eb60a6be40c626110f533b265e4` |
 
 ## Results
 
 | Metric | Result |
 |---|---:|
-| Requests | 499 |
+| Requests | 501 |
 | Throughput | 8 req/s |
-| p50 latency | 3.14 ms |
-| p95 latency | 20.40 ms |
-| p99 latency | 28.49 ms |
-| Booking successes | 118 |
-| Expected business rejects (400/409/429) | 381 |
+| p50 latency | 2.89 ms |
+| p95 latency | 15.80 ms |
+| p99 latency | 34.86 ms |
+| Booking successes | 60 |
+| Expected business rejects (400/409/429) | 441 |
 | System error rate | 0.000% |
 
 ## Interpretation

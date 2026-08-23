@@ -11,20 +11,20 @@ the exact benchmark commit SHA separately.
 
 ## Quality gate result
 
-| Gate                     | Result                                                     |
-| ------------------------ | ---------------------------------------------------------- |
-| Prettier format check    | PASS                                                       |
-| ESLint                   | PASS                                                       |
-| TypeScript typecheck     | PASS                                                       |
-| Unit suites              | PASS — 12 suites / 32 tests                                |
-| Integration suites       | PASS — 7 suites / 22 tests                                 |
-| Concurrency suites       | PASS — 4 suites / 7 tests                                  |
-| Production build         | PASS                                                       |
-| Submission verifier      | PASS — 39 checks                                           |
-| Delivery verifier        | PASS — route, Postman, hygiene, secret and lockfile checks |
-| Reviewer API smoke       | PASS — 10 checks                                           |
-| WOW correctness showcase | PASS — oversell, retry, voucher and expiry races           |
-| Representative k6 run    | PASS — 499 requests, 0.000% system errors                  |
+| Gate | Result |
+|---|---|
+| Prettier format check | PASS |
+| ESLint | PASS |
+| TypeScript typecheck | PASS |
+| Unit suites | PASS - 12 suites / 32 tests |
+| Integration suites | PASS - 7 suites / 22 tests |
+| Concurrency suites | PASS - 4 suites / 7 tests |
+| Production build | PASS |
+| Submission verifier | PASS - 41 checks |
+| Delivery verifier | PASS - 49 checks |
+| Reviewer API smoke | PASS - 10 checks |
+| WOW correctness showcase | PASS - oversell, retry, voucher and expiry races |
+| Representative k6 run | PASS - 501 requests, 0.000% system errors |
 
 The performance numbers and environment are recorded in
 [`PERFORMANCE_REPORT.md`](PERFORMANCE_REPORT.md). Expected business rejects
@@ -75,6 +75,7 @@ docker compose -p finalqa up --build -d
 $env:DATABASE_URL = 'postgresql://ticket:ticket@localhost:55442/ticket_booking'
 npm run db:reset
 npm run verify:submission
+npm run verify:delivery
 $env:BASE_URL = 'http://localhost:3400'; npm run demo:smoke
 docker compose -p finalqa down -v --remove-orphans
 ```
