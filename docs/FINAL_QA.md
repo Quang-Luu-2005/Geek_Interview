@@ -5,6 +5,10 @@ database-backed checks were run against a fresh PostgreSQL 16 schema after
 `npm run db:reset`; the load run was performed against the Compose API with
 `RATE_LIMIT_BOOKING_MAX=1000`.
 
+The QA source baseline is the commit recorded by `git log -1` immediately
+before the final evidence-only packaging commit. The performance report stores
+the exact benchmark commit SHA separately.
+
 ## Quality gate result
 
 | Gate                     | Result                                                     |
@@ -49,6 +53,11 @@ The performance numbers and environment are recorded in
 - The committed source contains no private key material or cloud/API tokens.
 - The delivery root is `README.md`; the canonical handoff map is
   [`submission/README.md`](../submission/README.md).
+- `npm audit` reports three high advisories in the Prisma 6.19 CLI's
+  dev/build-only `deepmerge-ts` chain. The automatic fix downgrades Prisma to
+  6.12 and breaks the current Prisma client/tooling alignment; this is a
+  documented production follow-up, not a runtime API dependency. Re-run the
+  audit before production deployment.
 
 ## Clean-clone rehearsal
 
@@ -70,9 +79,16 @@ $env:BASE_URL = 'http://localhost:3400'; npm run demo:smoke
 docker compose -p finalqa down -v --remove-orphans
 ```
 
-The rehearsal is expected to require no source or command edits. Record the
-elapsed `git clone`, `npm ci`, Compose build/start and first smoke response in
-the delivery notes when running it on a new machine.
+The rehearsal required no source or command edits in this environment:
+
+| Step | Measured result |
+|---|---:|
+| `npm ci` | 58 seconds |
+| Compose build/start | 2 minutes 53 seconds |
+| Readiness | first poll (about 2 seconds) |
+| Reset + verifier + delivery verifier + smoke | 5 seconds |
+
+The timings are local Windows/Docker measurements, not an SLA.
 
 ## Interview-defense prompts
 
