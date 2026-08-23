@@ -12,6 +12,14 @@ describe('HealthController', () => {
     expect(database.$queryRaw).toHaveBeenCalledTimes(1);
   });
 
+  it('returns a liveness response without touching the database', () => {
+    const database = { $queryRaw: jest.fn() };
+    const controller = new HealthController(database as never);
+
+    expect(controller.live()).toMatchObject({ status: 'ok', service: 'ticket-booking-api' });
+    expect(database.$queryRaw).not.toHaveBeenCalled();
+  });
+
   it('returns service unavailable when the database query fails', async () => {
     const database = { $queryRaw: jest.fn().mockRejectedValue(new Error('database down')) };
     const controller = new HealthController(database as never);

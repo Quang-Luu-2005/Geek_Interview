@@ -11,7 +11,9 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   app.enableShutdownHooks();
-  app.setGlobalPrefix('api', { exclude: ['health', 'metrics', 'openapi.yaml'] });
+  app.setGlobalPrefix('api', {
+    exclude: ['health', 'health/live', 'health/ready', 'metrics', 'openapi.yaml'],
+  });
   app.use(requestIdMiddleware);
   app.useGlobalPipes(
     new ValidationPipe({

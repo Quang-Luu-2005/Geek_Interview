@@ -27,6 +27,7 @@
 - [Test strategy](TEST_STRATEGY.md)
 - [Performance report](PERFORMANCE_REPORT.md)
 - [Assumptions, scope and limitations](ASSUMPTIONS_SCOPE_LIMITATIONS.md)
+- [WOW / plus points](WOW_PLUS_POINTS.md)
 - [Coding guidelines](CODING_GUIDELINES.md)
 - [Test-results index](../test-results/README.md)
 

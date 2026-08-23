@@ -23,6 +23,25 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Health' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /health/live:
+    get:
+      tags: [Health]
+      responses:
+        '200':
+          description: Process liveness (does not query PostgreSQL)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LiveHealth' }
+  /health/ready:
+    get:
+      tags: [Health]
+      responses:
+        '200':
+          description: Database readiness
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /metrics:
     get:
       tags: [Health]
@@ -246,6 +265,10 @@ components:
     Health:
       type: object
       properties: { status: { type: string }, database: { type: string }, timestamp: { type: string, format: date-time } }
+    LiveHealth:
+      type: object
+      required: [status, service, timestamp]
+      properties: { status: { type: string, example: ok }, service: { type: string, example: ticket-booking-api }, timestamp: { type: string, format: date-time } }
     CreateBooking:
       type: object
       required: [concertId, items]

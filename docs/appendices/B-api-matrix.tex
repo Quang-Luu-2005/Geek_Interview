@@ -9,6 +9,8 @@
 \midrule
 \endhead
 GET & /health & Public & Database health \\
+GET & /health/live & Public & Process liveness; no database dependency \\
+GET & /health/ready & Public & PostgreSQL readiness \\
 GET & /metrics & Public & Prometheus text counters \\
 GET & /openapi.yaml & Public & Machine-readable API contract \\
 GET & /concerts & Customer & Published concerts, pagination \\

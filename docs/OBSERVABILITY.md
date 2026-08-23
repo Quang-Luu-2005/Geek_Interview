@@ -1,5 +1,14 @@
 # API quality, observability and flash-sale policy
 
+## Runtime probes
+
+The service exposes separate orchestration probes: `GET /health/live` answers
+from process memory only, while `GET /health/ready` checks PostgreSQL and
+returns `503` when the dependency is unavailable. `GET /health` is retained as
+a backwards-compatible readiness alias. This lets a deployment restart an
+unhealthy process without routing traffic to an API that cannot commit a
+booking.
+
 ## Request tracing and logs
 
 Every request receives or propagates `X-Request-ID`. The response carries the

@@ -16,6 +16,7 @@ evidence-driven quality gates.
 | Verify correctness | [docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md) |
 | Review measured performance | [docs/PERFORMANCE_REPORT.md](docs/PERFORMANCE_REPORT.md) |
 | Check scope and limitations | [docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md](docs/ASSUMPTIONS_SCOPE_LIMITATIONS.md) |
+| See the WOW / plus points | [docs/WOW_PLUS_POINTS.md](docs/WOW_PLUS_POINTS.md) |
 | See the submission tree | [submission/README.md](submission/README.md) |
 
 ## Problem and architecture snapshot
@@ -50,8 +51,10 @@ npm run db:seed
 npm run start:dev
 ```
 
-The health endpoint is `GET http://localhost:3000/health`. It returns `503` when
-the database cannot be reached. The `/api` prefix is reserved for business APIs.
+The health endpoints are `GET /health/live` (process liveness) and
+`GET /health/ready` (PostgreSQL readiness); `/health` remains a backwards-
+compatible readiness alias and returns `503` when the database cannot be
+reached. The `/api` prefix is reserved for business APIs.
 This assessment exposes a static, machine-readable OpenAPI contract rather than
 an interactive Swagger UI: it is available at
 `http://localhost:3000/openapi.yaml`;
@@ -117,6 +120,7 @@ npm run lint
 npm run typecheck
 npm run test:unit
 npm run build
+npm run verify:submission
 ```
 
 Database-backed checks require PostgreSQL plus migration and seed:
@@ -155,7 +159,10 @@ curl -X POST http://localhost:3000/api/bookings \
 ```
 
 For concurrency and expiry behavior, run `npm run test:concurrency`; for the
-full request-by-request flow, use the [Postman runbook](postman/README.md).
+full request-by-request flow, use the [Postman runbook](postman/README.md). The
+reviewer-facing end-to-end smoke journey is `npm run demo:smoke`; it creates and
+cancels one booking without resetting the database. See
+[docs/WOW_PLUS_POINTS.md](docs/WOW_PLUS_POINTS.md).
 
 ## Repository conventions
 
